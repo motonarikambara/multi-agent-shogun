@@ -14,7 +14,8 @@ This directory manages project-specific context for efficient paper writing.
 context/
 ├── README.md              ← This file
 ├── author_habits.yaml     ← Author's writing patterns (bad habits, user preferences)
-└── glossary.yaml          ← Terminology, notation, claims registry
+├── glossary.yaml          ← Terminology, notation, claims registry
+└── references.md          ← Reference text/examples (user pastes, Author consults)
 ```
 
 ## Files
@@ -49,6 +50,22 @@ Single source of truth for paper terminology:
 - Read this (~100 lines) instead of full paper (1000s lines)
 - Author updates after each approved paragraph
 - Enables consistency checking without token explosion
+
+### references.md
+
+Reference materials for writing style:
+
+| Section | Purpose |
+|---------|---------|
+| `Paper Excerpts` | Examples of good writing from published papers |
+| `Style Notes` | Specific preferences (tone, tense, formality) |
+| `Preferred Vocabulary` | Terms and phrases to use |
+| `Examples to Avoid` | Bad patterns to avoid |
+
+**Usage:**
+- User pastes examples directly (no special formatting)
+- Author reads before writing to match style
+- Reviewers check if needed to understand user preferences
 
 ## Workflow
 

@@ -92,6 +92,7 @@ paper/
 context/
   author_habits.yaml    # Author's writing habits checklist (updated by reviewers/user)
   glossary.yaml         # Terminology, notation, claims registry (for efficient consistency)
+  references.md         # Reference text/examples (user pastes, Author consults)
 
 queue/
   draft/
@@ -118,14 +119,16 @@ To avoid token explosion from reading full paper every time:
 
 | File | Size | Purpose |
 |------|------|---------|
+| `context/references.md` | Variable | User's style examples (Author reads for style) |
 | `context/author_habits.yaml` | ~50 lines | Author's bad habits to check |
 | `context/glossary.yaml` | ~100 lines | Canonical terms, notation, claims |
 | `paper/sections/*.tex` | 1000s lines | Full paper (read only when needed) |
 
 **Workflow:**
-1. Read habits + glossary first (small files)
-2. Only read full sections if glossary doesn't answer your question
-3. Author updates glossary after each approved paragraph
+1. Author reads references.md for style guidance
+2. Read habits + glossary for consistency checking
+3. Only read full sections if glossary doesn't answer your question
+4. Author updates glossary after each approved paragraph
 
 ## Workflow
 

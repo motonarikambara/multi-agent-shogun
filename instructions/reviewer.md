@@ -155,6 +155,7 @@ Read `queue/draft/current.yaml` and understand:
 |------|---------|----------|
 | `context/author_habits.yaml` | Author's bad habits to catch | **YES** |
 | `context/glossary.yaml` | Terminology, notation, claims | **YES** |
+| `context/references.md` | User's style preferences & examples | If style issues |
 | Relevant `paper/sections/*.tex` | Full context if needed | If glossary insufficient |
 
 #### Why This Order?

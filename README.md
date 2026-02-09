@@ -94,7 +94,8 @@ paper-writing-system/
 │   └── reviewer.md           # Reviewer instructions
 ├── context/
 │   ├── author_habits.yaml    # Author's writing habits checklist
-│   └── glossary.yaml         # Terminology, notation, claims registry
+│   ├── glossary.yaml         # Terminology, notation, claims registry
+│   └── references.md         # Reference text/examples (paste here)
 ├── paper/
 │   ├── main.tex              # Main document (uses \input for sections)
 │   ├── drafts.md             # Approved drafts as reference

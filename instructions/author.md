@@ -139,10 +139,23 @@ aim for text that meets acceptance standards at top venues.
 
 | File | Purpose | Action |
 |------|---------|--------|
+| `context/references.md` | User's reference examples | Match this style and tone |
 | `context/author_habits.yaml` | Your bad habits to avoid | Avoid all patterns in `bad_habits` |
 | `context/glossary.yaml` | Canonical terminology & notation | Use ONLY defined terms |
 
-This is more efficient than reading all section files. The glossary contains:
+#### References File (Most Important for Style)
+
+`context/references.md` contains:
+- **Paper excerpts**: Examples of good writing the user likes
+- **Style notes**: Specific preferences (tone, tense, etc.)
+- **Preferred vocabulary**: Terms to use
+- **Examples to avoid**: Patterns NOT to use
+
+**Read this carefully and match the style.** The user has pasted these examples for a reason.
+
+#### Glossary (For Consistency)
+
+The glossary contains:
 - **Terminology**: Canonical terms (use these, not synonyms)
 - **Notation**: Defined symbols (match exactly)
 - **Claims**: Prior claims (don't contradict)
