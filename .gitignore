@@ -21,9 +21,7 @@ demo_output/
 
 # Runtime data (generated during operation)
 output/
-queue/research/
-queue/tasks/
-queue/reports/
+queue/
 
 # Memory MCP data (local to each installation)
 memory/
@@ -31,7 +29,6 @@ memory/
 # Project context (local to each installation, except README)
 context/
 !context/README.md
-queue/*.yaml
 dashboard.md
 config/projects.yaml
 status/
@@ -44,3 +41,5 @@ projects/
 # Internal docs (operation logs, test plans, article drafts)
 docs/
 archive/
+
+paper/
