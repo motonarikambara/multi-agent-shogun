@@ -7,11 +7,11 @@ A multi-agent framework for academic paper writing, featuring one author agent a
 This system uses Claude Code with tmux to orchestrate multiple AI agents:
 
 - **Author**: Writes paper paragraphs based on user-provided questions and answers
-- **Reviewer 1**: Reviews for Technical Novelty
-- **Reviewer 2**: Reviews for Experimental Rigor  
-- **Reviewer 3**: Reviews for Clarity & Presentation
+- **Reviewer 1**: Reviews for Contributions & Claims (novelty scope, overclaiming)
+- **Reviewer 2**: Reviews for Technical Soundness & Methodology (accuracy, experiments)
+- **Reviewer 3**: Reviews for Presentation & Language Authenticity (clarity, native English)
 
-The reviewers are modeled as top Robot Learning researchers (PIs at leading American universities with many papers at CoRL, ICRA, RSS) who are hyper-logical and demand scientific rigor.
+The reviewers are modeled as expert reviewers for top-tier venues (CoRL, ICRA, RSS, NeurIPS). They adopt strict but polite evaluation criteria, never take claims at face value, and immediately notice AI-generated language patterns.
 
 ## Workflow
 
@@ -92,6 +92,9 @@ paper-writing-system/
 ├── instructions/
 │   ├── author.md             # Author instructions
 │   └── reviewer.md           # Reviewer instructions
+├── context/
+│   ├── author_habits.yaml    # Author's writing habits checklist
+│   └── glossary.yaml         # Terminology, notation, claims registry
 ├── paper/
 │   ├── main.tex              # Main document (uses \input for sections)
 │   ├── drafts.md             # Approved drafts as reference
@@ -122,25 +125,28 @@ paper-writing-system/
 ## Reviewer Personas
 
 All reviewers share these characteristics:
-- **Expertise**: Robot Learning
-- **Track Record**: Many papers at CoRL, ICRA, RSS
+- **Expertise**: Robot Learning (manipulation, locomotion, embodied AI)
+- **Track Record**: Senior researchers with extensive reviewing experience
 - **Background**: PIs at top American universities
-- **Thinking Style**: Hyper-logical, no tolerance for ambiguity
+- **Thinking Style**: Hyper-logical, skeptical of overclaims, demand evidence
+- **Language**: Native American English; immediately notice AI-generated patterns
 
 | Reviewer | Specialty | Focus |
 |----------|-----------|-------|
-| Reviewer 1 | Technical Novelty | Accuracy, novelty, prior work differentiation |
-| Reviewer 2 | Experimental Rigor | Experiment design, reproducibility, statistics |
-| Reviewer 3 | Clarity & Presentation | Structure, clarity, figures, notation |
+| Reviewer 1 | Contributions & Claims | Novelty scope, overclaiming, prior work differentiation |
+| Reviewer 2 | Technical Soundness & Methodology | Accuracy, method description, experiments, reproducibility |
+| Reviewer 3 | Presentation & Language Authenticity | Structure, clarity, native English, AI-language detection |
+
+**All reviewers** also check: paper-wide consistency (terminology, notation) and logical flow.
 
 ## Key Features
 
-- **Consistency Checking**: Reviewers read `paper/main.tex` to ensure new paragraphs are consistent with existing content
+- **AI-Language Detection**: Reviewers catch AI-sounding patterns (leverages, utilize, facilitate, etc.)
+- **Efficient Consistency**: Uses `glossary.yaml` instead of reading full paper every time
+- **Habits Tracking**: `author_habits.yaml` tracks recurring patterns; user can add preferences
 - **Parallel Review**: All 3 reviewers review simultaneously in the first round
-- **Individual Rebuttal**: After initial review, author addresses each reviewer individually
 - **Convergence Requirement**: All 3 reviewers must approve before a paragraph is finalized
-- **Arsenal Building**: Approved paragraphs accumulate in `paper/main.tex` as reference for future writing
-- **User Intervention**: PAUSE, REDIRECT, and SKIP commands to control the rebuttal process
+- **User Intervention**: PAUSE, REDIRECT, SKIP, and HABIT commands to control the process
 
 ## User Intervention
 
@@ -153,6 +159,7 @@ You can intervene at any point during the rebuttal process to correct the direct
 | `PAUSE` | Type "PAUSE" | Stop immediately and wait for instructions |
 | `redirect: [instruction]` | Type "redirect: focus on clarity" | Change rebuttal direction |
 | `skip reviewer N` | Type "skip reviewer 2" | Ignore reviewer N's comments for this round |
+| `habit: [preference]` | Type "habit: avoid passive voice" | Add to Author's habits checklist permanently |
 | Direct feedback | Provide your own comments | Treated as highest priority (above reviewers) |
 
 ### Approval Gate

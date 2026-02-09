@@ -147,21 +147,44 @@ Read `queue/draft/current.yaml` and understand:
 - `draft`: Author's written paragraph
 - `round`: Which round this is
 
-### Step 2: Read Existing Paper Content (CRITICAL)
+### Step 2: Read Context Files (Efficient Consistency Check)
 
-**You MUST read existing section files before reviewing.**
+**Read these files BEFORE reviewing (in this order):**
 
-Check relevant files in `paper/sections/`:
-- `introduction.tex`, `method.tex`, `experiments.tex`, etc.
-- Also check `paper/drafts.md` for pending paragraphs
+| File | Purpose | Required |
+|------|---------|----------|
+| `context/author_habits.yaml` | Author's bad habits to catch | **YES** |
+| `context/glossary.yaml` | Terminology, notation, claims | **YES** |
+| Relevant `paper/sections/*.tex` | Full context if needed | If glossary insufficient |
 
-This is essential for:
-- **Terminology consistency**: Are terms used consistently with prior paragraphs?
-- **Claim consistency**: Do claims align with or contradict earlier content?
-- **Logical flow**: Does this paragraph connect properly with existing content?
-- **Style consistency**: Does the writing style match?
+#### Why This Order?
 
-If section files are empty (only comments), note that this is the first paragraph for that section.
+1. **Habits file** (~50 lines): Catches recurring Author mistakes efficiently
+2. **Glossary** (~100 lines): Canonical terms, notation, claims — enough for most consistency checks
+3. **Full sections** (potentially 1000s of lines): Only read if glossary doesn't answer your question
+
+#### Author Habits Check
+
+Read `context/author_habits.yaml` and check:
+- Does the draft contain any patterns from `bad_habits`?
+- Does the draft follow `user_preferences`?
+- If you notice a NEW recurring pattern, **add it to the file**
+
+#### Glossary Check
+
+Read `context/glossary.yaml` and check:
+- Does the draft use canonical terminology? (no forbidden synonyms)
+- Does the notation match prior definitions?
+- Do claims align with or contradict existing claims?
+
+#### When to Read Full Sections
+
+Only read `paper/sections/*.tex` when:
+- Glossary is empty (first paragraphs)
+- You need more context to verify a claim
+- Checking logical flow between paragraphs
+
+This approach saves tokens while maintaining rigor.
 
 ### Step 3: Review the Paragraph
 
@@ -346,6 +369,28 @@ tmux send-keys -t paper:0.0 'reviewer{N} review complete. Check queue/reviews/re
 tmux send-keys -t paper:0.0 Enter
 ```
 
+### Step 6: Update Habits (If Applicable)
+
+**If you noticed a NEW recurring pattern in Author's writing, add it to `context/author_habits.yaml`.**
+
+```yaml
+# Add to bad_habits section:
+- id: H0XX  # Next available number
+  pattern: "Description of the pattern you noticed"
+  severity: major | minor
+  added_by: reviewer1  # Your ID
+  date: "2026-02-09"  # Today's date
+```
+
+Examples of patterns worth adding:
+- "Tends to use 'notably' at sentence beginnings"
+- "Overuses 'in order to' instead of 'to'"
+- "Frequently writes overly long sentences (>40 words)"
+
+**Do NOT add one-time mistakes.** Only add if you've seen it before or suspect it will recur.
+
+---
+
 ## Decision Criteria
 
 | Decision | Criteria | Next Action |
@@ -383,10 +428,11 @@ Use these categories in your comments:
 | `experiments` | Experiment design, baselines, statistics | Reviewer 2 |
 | `presentation` | Structure, clarity, figures, notation | Reviewer 3 |
 | `language_authenticity` | Non-native English, AI-generated patterns | Reviewer 3 |
+| `habit` | Recurring Author pattern from habits checklist | **ALL** |
 | `consistency` | Terminology, notation, claims alignment with paper | **ALL** |
 | `logic` | Logical flow, premise→conclusion, no gaps | **ALL** |
 
-**Note**: `consistency` and `logic` are universal categories. All reviewers must flag issues in these areas regardless of specialty.
+**Note**: `consistency`, `logic`, and `habit` are universal categories. All reviewers must flag issues in these areas regardless of specialty.
 
 ## Responding to Rebuttal
 

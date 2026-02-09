@@ -1,33 +1,33 @@
 ---
 name: skill-creator
-description: 汎用的な作業パターンを発見した際に、再利用可能なClaude Codeスキルを自動生成する。繰り返し使えるワークフロー、ベストプラクティス、ドメイン知識をスキル化する時に使用。
+description: Auto-generate reusable Claude Code skills when discovering generic work patterns. Use when creating skills for repeatable workflows, best practices, or domain knowledge.
 ---
 
-# Skill Creator - スキル自動生成
+# Skill Creator
 
 ## Overview
 
-作業中に発見した汎用的なパターンを、再利用可能なClaude Codeスキルとして保存する。
-これにより、同じ作業を繰り返す際の品質と効率が向上する。
+Save generic patterns discovered during work as reusable Claude Code skills.
+This improves quality and efficiency when repeating similar tasks.
 
 ## When to Create a Skill
 
-以下の条件を満たす場合、スキル化を検討せよ：
+Consider creating a skill when the following conditions are met:
 
-1. **再利用性**: 他のプロジェクトでも使えるパターン
-2. **複雑性**: 単純すぎず、手順や知識が必要なもの
-3. **安定性**: 頻繁に変わらない手順やルール
-4. **価値**: スキル化することで明確なメリットがある
+1. **Reusability**: Pattern applicable to other projects
+2. **Complexity**: Non-trivial; requires specific steps or knowledge
+3. **Stability**: Procedures or rules that don't change frequently
+4. **Value**: Clear benefit from skill-ifying
 
 ## Skill Structure
 
-生成するスキルは以下の構造に従う：
+Generated skills follow this structure:
 
 ```
 skill-name/
-├── SKILL.md          # 必須
-├── scripts/          # オプション（実行スクリプト）
-└── resources/        # オプション（参照ファイル）
+├── SKILL.md          # Required
+├── scripts/          # Optional (execution scripts)
+└── resources/        # Optional (reference files)
 ```
 
 ## SKILL.md Template
@@ -35,99 +35,113 @@ skill-name/
 ```markdown
 ---
 name: {skill-name}
-description: {いつこのスキルを使うか、具体的なユースケースを明記}
+description: {When to use this skill; specific use cases}
 ---
 
 # {Skill Name}
 
 ## Overview
-{このスキルが何をするか}
+{What this skill does}
 
 ## When to Use
-{どういう状況で使うか、トリガーとなるキーワードや状況}
+{Trigger situations, keywords, or contexts}
 
 ## Instructions
-{具体的な手順}
+{Step-by-step procedures}
 
 ## Examples
-{入力と出力の例}
+{Input and output examples}
 
 ## Guidelines
-{守るべきルール、注意点}
+{Rules to follow, edge cases}
 ```
 
 ## Creation Process
 
-1. パターンの特定
-   - 何が汎用的か
-   - どこで再利用できるか
+1. **Identify the Pattern**
+   - What is generic/reusable?
+   - Where can it be applied?
 
-2. スキル名の決定
-   - kebab-case を使用（例: api-error-handler）
-   - 動詞+名詞 or 名詞+名詞
+2. **Choose Skill Name**
+   - Use kebab-case (e.g., `api-error-handler`)
+   - Format: verb+noun or noun+noun
 
-3. description の記述（最重要）
-   - Claude がいつこのスキルを使うか判断する材料
-   - 具体的なユースケース、ファイルタイプ、アクション動詞を含める
-   - 悪い例: "ドキュメント処理スキル"
-   - 良い例: "PDFからテーブルを抽出しCSVに変換する。データ分析ワークフローで使用。"
+3. **Write Description (Most Important)**
+   - This is how Claude decides when to use the skill
+   - Include specific use cases, file types, action verbs
+   - BAD: "Document processing skill"
+   - GOOD: "Extract tables from PDF and convert to CSV. Used in data analysis workflows."
 
-4. Instructions の記述
-   - 明確な手順
-   - 判断基準
-   - エッジケースの対処
+4. **Write Instructions**
+   - Clear step-by-step procedures
+   - Decision criteria
+   - Edge case handling
 
-5. 保存
-   - パス: ~/.claude/skills/shogun-{skill-name}/
-   - 既存スキルと名前が被らないか確認
+5. **Save**
+   - Path: `~/.claude/skills/{skill-name}/` or project-local `skills/`
+   - Verify no naming conflicts with existing skills
 
-## 使用フロー
+## Usage in This Project
 
-このスキルはKaroがShogunからの指示を受けて使用する。
+### For Reviewers
 
-1. Ashigaruがスキル化候補を発見 → Karoに報告
-2. Karo → Shogunに報告
-3. **Shogunが最新仕様をリサーチし、スキル設計を行う**
-4. Shogunが人間に承認を依頼（dashboard.md経由）
-5. 人間が承認
-6. Shogun → Karoに作成を指示（設計書付き）
-7. **Karo がこのskill-creatorを使用してスキルを作成**
-8. 完了報告
+When you notice a recurring Author pattern worth tracking:
 
-※ Shogunがリサーチした最新仕様に基づいて作成すること。
-※ Shogunからの設計書に従うこと。
+1. Check if it belongs in `context/author_habits.yaml` (project-specific)
+2. If it's a generic pattern useful across projects → consider creating a skill
+
+### For Author
+
+When you develop a writing technique that works well:
+
+1. Document it in your workflow
+2. If reusable across papers → propose as a skill
 
 ## Examples of Good Skills
 
 ### Example 1: API Response Handler
+
 ```markdown
 ---
 name: api-response-handler
-description: REST APIのレスポンス処理パターン。エラーハンドリング、リトライロジック、レスポンス正規化を含む。API統合作業時に使用。
+description: REST API response processing patterns. Includes error handling, retry logic, and response normalization. Use during API integration work.
 ---
 ```
 
-### Example 2: Meeting Notes Formatter
+### Example 2: Academic Writing Checker
+
 ```markdown
 ---
-name: meeting-notes-formatter
-description: 議事録を標準フォーマットに変換する。参加者、決定事項、アクションアイテムを抽出・整理。会議後のドキュメント作成時に使用。
+name: academic-writing-checker
+description: Check academic writing for AI-sounding patterns, passive voice overuse, and unclear claims. Use when reviewing paper drafts.
 ---
 ```
 
-### Example 3: Data Validation Rules
+### Example 3: Terminology Consistency Checker
+
 ```markdown
 ---
-name: data-validation-rules
-description: 入力データのバリデーションパターン集。メール、電話番号、日付、金額などの検証ルール。フォーム処理やデータインポート時に使用。
+name: terminology-checker
+description: Verify terminology consistency across documents using a glossary file. Use when writing multi-section papers or documentation.
 ---
 ```
+
+## Skill vs. Project-Specific Files
+
+| Type | Location | Scope | Example |
+|------|----------|-------|---------|
+| **Skill** | `~/.claude/skills/` | All projects | Generic academic writing patterns |
+| **Project file** | `context/*.yaml` | This project only | Author's specific bad habits |
+
+**Rule of thumb**: If it's useful for other papers/projects → skill. If it's specific to this paper → project file.
 
 ## Reporting Format
 
-スキル生成時は以下の形式で報告：
+When creating a skill, report:
 
-「はっ！(Ha!) 新たなる技を編み出しました(New skill created!)
-- スキル名: {name}
-- 用途: {description}
-- 保存先: {path}」
+```
+New skill created:
+- Name: {name}
+- Purpose: {description}
+- Path: {path}
+```

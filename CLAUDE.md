@@ -89,6 +89,10 @@ paper/
     discussion.tex      # Discussion content
     conclusion.tex      # Conclusion content
 
+context/
+  author_habits.yaml    # Author's writing habits checklist (updated by reviewers/user)
+  glossary.yaml         # Terminology, notation, claims registry (for efficient consistency)
+
 queue/
   draft/
     current.yaml        # Current draft (Author → Reviewers)
@@ -107,6 +111,21 @@ instructions/
   author.md             # Author instructions
   reviewer.md           # Reviewer instructions
 ```
+
+## Efficient Consistency Checking
+
+To avoid token explosion from reading full paper every time:
+
+| File | Size | Purpose |
+|------|------|---------|
+| `context/author_habits.yaml` | ~50 lines | Author's bad habits to check |
+| `context/glossary.yaml` | ~100 lines | Canonical terms, notation, claims |
+| `paper/sections/*.tex` | 1000s lines | Full paper (read only when needed) |
+
+**Workflow:**
+1. Read habits + glossary first (small files)
+2. Only read full sections if glossary doesn't answer your question
+3. Author updates glossary after each approved paragraph
 
 ## Workflow
 
@@ -153,7 +172,19 @@ The user can intervene at any point during the rebuttal process.
 | `PAUSE` | Stop immediately and wait for instructions |
 | `redirect: [instruction]` | Change rebuttal direction |
 | `skip reviewer N` | Ignore reviewer N's comments for this round |
+| `habit: [preference]` | Add writing preference to Author's habits checklist |
 | Direct feedback | Treated as highest priority (above reviewers) |
+
+### Adding Writing Preferences
+
+User can add permanent writing preferences:
+```
+habit: Always use 'we show' instead of 'we demonstrate'
+habit: Avoid sentences longer than 30 words
+habit: Use present tense for method descriptions
+```
+
+These are saved to `context/author_habits.yaml` → `user_preferences` and checked on every review.
 
 ### Approval Gate
 

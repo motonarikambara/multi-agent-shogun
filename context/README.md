@@ -1,65 +1,77 @@
-# context ディレクトリ
+# Context Directory
 
-プロジェクト固有のコンテキストを管理するディレクトリ。
+This directory manages project-specific context for efficient paper writing.
 
-## 目的
-- プロジェクトごとの知識・決定事項を保存
-- セッション間での情報共有
-- 新規参加者（足軽）への引継ぎ
+## Purpose
 
-## ファイル構成
+- Store terminology, notation, and claims for consistency checking
+- Track Author's writing habits and user preferences
+- Enable efficient reviews without reading the full paper every time
+
+## File Structure
+
 ```
 context/
-  README.md           ← このファイル
-  {project_id}.md     ← プロジェクト固有のコンテキスト
+├── README.md              ← This file
+├── author_habits.yaml     ← Author's writing patterns (bad habits, user preferences)
+└── glossary.yaml          ← Terminology, notation, claims registry
 ```
 
-## 使い方
+## Files
 
-### 新規プロジェクト追加時
-1. `context/{project_id}.md` を作成
-2. 下記テンプレートに沿って記載
+### author_habits.yaml
 
-### 作業開始時
-1. `memory/global_context.md` を読む（システム全体の設定）
-2. `context/{project_id}.md` を読む（プロジェクト固有情報）
+Tracks Author's recurring patterns:
 
-## テンプレート
+| Section | Purpose | Updated By |
+|---------|---------|------------|
+| `bad_habits` | Patterns to avoid | Reviewers (when noticed) |
+| `good_habits` | Patterns to maintain | Reviewers (when noticed) |
+| `user_preferences` | User's writing preferences | User (via `habit:` command) |
 
-```markdown
-# {project_id} プロジェクトコンテキスト
-最終更新: YYYY-MM-DD
+**Usage:**
+- Author reads before writing (self-check)
+- Reviewers read before reviewing (catch habits)
+- User adds preferences: `habit: Always use 'we show' instead of 'we demonstrate'`
 
-## 基本情報
-- **プロジェクトID**: {project_id}
-- **正式名称**: {name}
-- **パス**: {path}
-- **Notion URL**: {url}（あれば）
+### glossary.yaml
 
-## 概要
-{プロジェクトの概要を1-2文で}
+Single source of truth for paper terminology:
 
-## 技術スタック
-- 言語:
-- フレームワーク:
-- データベース:
+| Section | Purpose |
+|---------|---------|
+| `terminology` | Canonical terms and forbidden synonyms |
+| `notation` | Mathematical symbols and their meanings |
+| `abbreviations` | Acronyms and expansions |
+| `claims` | Main claims (to prevent contradictions) |
 
-## 重要な決定事項
-- {決定1}
-- {決定2}
+**Usage:**
+- Read this (~100 lines) instead of full paper (1000s lines)
+- Author updates after each approved paragraph
+- Enables consistency checking without token explosion
 
-## マイルストーン
-- **期限**: YYYY-MM-DD（{イベント名}）
+## Workflow
 
-## 進行状況
-- [x] 完了タスク
-- [ ] 未完了タスク
+### When Writing a New Paragraph
 
-## 注意事項
-{プロジェクト固有の注意点}
-```
+1. Author reads `glossary.yaml` for terminology/notation
+2. Author reads `author_habits.yaml` for patterns to avoid
+3. Author writes using canonical terms
+4. After approval, Author updates `glossary.yaml` with new terms
 
-## 更新ルール
-- 重要な決定があったら即座に更新
-- 日付を必ず更新
-- 不要になった情報は削除（シンプルに保つ）
+### When Reviewing
+
+1. Reviewer reads `author_habits.yaml` (check for bad habits)
+2. Reviewer reads `glossary.yaml` (check consistency)
+3. Only read full `paper/sections/*.tex` if glossary is insufficient
+4. If new recurring pattern noticed, add to `author_habits.yaml`
+
+## Token Efficiency
+
+| File | Approx. Size | Read Frequency |
+|------|--------------|----------------|
+| `author_habits.yaml` | ~50 lines | Every review |
+| `glossary.yaml` | ~100 lines | Every review |
+| `paper/sections/*.tex` | 1000+ lines | Only when needed |
+
+This approach prevents context window overflow while maintaining rigor.

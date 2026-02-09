@@ -133,11 +133,35 @@ aim for text that meets acceptance standards at top venues.
 
 ## Phase 1: Writing
 
+### Step 0: Read Context Files (Before Writing)
+
+**Read these files BEFORE writing any paragraph:**
+
+| File | Purpose | Action |
+|------|---------|--------|
+| `context/author_habits.yaml` | Your bad habits to avoid | Avoid all patterns in `bad_habits` |
+| `context/glossary.yaml` | Canonical terminology & notation | Use ONLY defined terms |
+
+This is more efficient than reading all section files. The glossary contains:
+- **Terminology**: Canonical terms (use these, not synonyms)
+- **Notation**: Defined symbols (match exactly)
+- **Claims**: Prior claims (don't contradict)
+
+If glossary is empty, this is the first paragraph — you'll populate it after approval.
+
 ### Receiving User Input
 
 The user provides input in this format:
 - **Question**: The question the paragraph should answer
 - **Answer**: Technical information to address that question
+
+### User Preference Commands
+
+The user may add preferences to your habits checklist:
+- **"habit: [preference]"** — Adds to `context/author_habits.yaml` → `user_preferences`
+- Example: "habit: Always use 'we show' instead of 'we demonstrate'"
+
+When user adds a preference, update the file and follow it in all future writing.
 
 ### Asking for Clarification
 
@@ -205,13 +229,24 @@ AI-generated text has recognizable patterns that experienced reviewers immediate
 
 #### Self-Check Before Submitting Draft
 
-Before presenting your draft to the user, re-read and ask:
-- Would a native English-speaking professor at Stanford/MIT/CMU write this sentence?
-- Does any sentence sound like ChatGPT wrote it?
-- Are there unnecessary hedging words I can delete?
-- Am I using "leverage," "utilize," or "facilitate" anywhere?
+Before presenting your draft to the user, re-read and check:
 
-**If you detect AI patterns in your own writing, rewrite before showing the draft.**
+**Habits Check (from `context/author_habits.yaml`):**
+- [ ] Does my draft avoid all patterns in `bad_habits`?
+- [ ] Does my draft follow all `user_preferences`?
+
+**AI-Language Check:**
+- [ ] Would a native English-speaking professor at Stanford/MIT/CMU write this sentence?
+- [ ] Does any sentence sound like ChatGPT wrote it?
+- [ ] Are there unnecessary hedging words I can delete?
+- [ ] Am I using "leverage," "utilize," or "facilitate" anywhere?
+
+**Consistency Check (from `context/glossary.yaml`):**
+- [ ] Am I using canonical terminology? (no forbidden synonyms)
+- [ ] Does my notation match prior definitions?
+- [ ] Do my claims align with prior claims?
+
+**If you detect any issues, rewrite before showing the draft.**
 
 ### Waiting for User's "OK"
 
@@ -340,6 +375,42 @@ After saving the revision, notify reviewers again.
 - If all have `approve`, proceed to Phase 4
 
 ## Phase 4: Completion
+
+### Update Glossary (Before Saving)
+
+**When all reviewers approve, update `context/glossary.yaml` with any new:**
+
+1. **Terminology**: New terms introduced in this paragraph
+   ```yaml
+   terminology:
+     new_concept:
+       canonical: "exact term used"
+       forbidden_synonyms: ["terms to avoid"]
+       first_defined: "section/para_XXX"
+       definition: "Brief definition"
+   ```
+
+2. **Notation**: New symbols introduced
+   ```yaml
+   notation:
+     new_symbol:
+       latex: "\\mathbf{x}"
+       meaning: "What it represents"
+       first_defined: "section/para_XXX"
+       dimension: "R^{N x D}"
+   ```
+
+3. **Claims**: New claims made
+   ```yaml
+   claims:
+     claim_id:
+       claim: "The exact claim"
+       section: "method"
+       para_id: "para_XXX"
+       strength: "strong | moderate | qualified"
+   ```
+
+**This is essential for efficiency** — future paragraphs will read glossary instead of full paper.
 
 ### Ask User: Where to Save?
 
