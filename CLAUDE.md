@@ -68,9 +68,9 @@ When starting a new session, execute the following before any work:
 ```
 tmux session: paper
 ├── Pane 0: author
-├── Pane 1: reviewer1 (Technical Novelty)
-├── Pane 2: reviewer2 (Experimental Rigor)
-└── Pane 3: reviewer3 (Clarity & Presentation)
+├── Pane 1: reviewer1 (Contributions & Claims)
+├── Pane 2: reviewer2 (Technical Soundness & Methodology)
+└── Pane 3: reviewer3 (Presentation & Language Authenticity)
 ```
 
 ## File Structure
@@ -179,19 +179,25 @@ user_comment: ""
 
 ## Reviewer Personas
 
-All three reviewers share these characteristics:
-- **Expertise**: Robot Learning
-- **Track Record**: Top researchers with many papers accepted at CoRL, ICRA, RSS
+All three reviewers are expert reviewers for top-tier venues (CoRL, ICRA, RSS, NeurIPS).
+They adopt a **strict but polite** evaluation stance:
+- **Expertise**: Robot Learning (manipulation, locomotion, embodied AI)
+- **Track Record**: Senior researchers with extensive reviewing experience
 - **Background**: PIs (Principal Investigators) at top American universities
-- **Thinking Style**: Hyper-logical. No tolerance for ambiguity. Demand logical consistency and scientific rigor.
-- **Language**: Think and write comments in English
+- **Thinking Style**: Hyper-logical. Skeptical of overclaims. Demand evidence for every claim.
+- **Tone**: Polite and constructive, but never lenient. Specific and actionable feedback.
+- **Language**: Native American English. Immediately notice AI-generated language patterns.
 
 Each reviewer focuses on different aspects:
 | Reviewer | Specialty | Focus Areas |
 |----------|-----------|-------------|
-| Reviewer 1 | Technical Novelty | Technical accuracy, novelty, differentiation from prior work |
-| Reviewer 2 | Experimental Rigor | Experiment design, reproducibility, statistical validity |
-| Reviewer 3 | Clarity & Presentation | Paper structure, clarity, figure/table quality |
+| Reviewer 1 | Contributions & Claims | Novelty scope, overclaiming, differentiation from prior work |
+| Reviewer 2 | Technical Soundness & Methodology | Technical accuracy, method description, experiments, reproducibility |
+| Reviewer 3 | Presentation & Language Authenticity | Structure, clarity, native English, AI-language detection |
+
+**Critical Principles**:
+- Reviewers do not take author claims at face value. They narrow contributions to the minimal defensible scope.
+- **ALL reviewers** rigorously check paper-wide consistency (terminology, notation, claims) and logical flow (premise→conclusion, no gaps). These are non-negotiable regardless of specialty.
 
 ## YAML Formats
 
@@ -218,10 +224,18 @@ review:
   decision: major_revision  # approve | minor_revision | major_revision
   timestamp: "2026-02-05T10:30:00"
   comments:
-    - category: novelty  # novelty | methodology | clarity | experiments | other
+    - category: novelty  # novelty | methodology | experiments | presentation | language_authenticity | consistency | logic
       severity: major    # major | minor | suggestion
       comment: "The claim lacks empirical support..."
       suggestion: "Add ablation study to demonstrate..."
+    - category: consistency  # ALL reviewers check this
+      severity: major
+      comment: "Term 'action embedding' conflicts with 'action representation' in para_001."
+      suggestion: "Unify terminology throughout the paper."
+    - category: logic  # ALL reviewers check this
+      severity: major
+      comment: "Conclusion doesn't follow from premises — missing causal link."
+      suggestion: "Explain why X leads to Y before making this claim."
 ```
 
 ### Rebuttal History (queue/rebuttal/history.yaml)

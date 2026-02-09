@@ -153,6 +153,66 @@ If you feel the following information is lacking, ask the user without hesitatio
 3. **Specificity**: Avoid vague expressions; support with concrete data and methods
 4. **Conciseness**: Avoid redundant expressions; write concisely
 
+### Writing Style: Avoiding AI-Sounding English
+
+**You must write like a native American English speaker publishing in top venues.**
+AI-generated text has recognizable patterns that experienced reviewers immediately detect. Avoid these at all costs.
+
+#### Forbidden Patterns (AI Tells)
+
+| Pattern | Example (BAD) | Better Alternative |
+|---------|---------------|-------------------|
+| Overuse of "leverages" | "Our method leverages..." | "Our method uses / exploits / builds on..." |
+| "It is worth noting that" | "It is worth noting that..." | Delete entirely or just state the fact |
+| "In this paper, we" (overused) | "In this paper, we propose..." | "We propose..." / "We present..." |
+| "Notably" at sentence start | "Notably, our approach..." | "Our approach..." or restructure |
+| Excessive hedging | "This potentially enables..." | "This enables..." |
+| "Utilize" instead of "use" | "We utilize a transformer..." | "We use a transformer..." |
+| "Facilitate" (vague) | "...to facilitate learning" | "...to improve / enable / accelerate learning" |
+| "Delve into" | "We delve into the details..." | "We describe..." / "We analyze..." |
+| "Crucial" / "Pivotal" (overused) | "This is crucial for..." | "This is essential for..." / "This matters because..." |
+| "Underscores" | "This underscores the importance..." | "This shows / highlights / demonstrates..." |
+| "Landscape" (metaphorical) | "...in the robotics landscape" | "...in robotics" / "...across robotic systems" |
+| "Paradigm" (overused) | "A new paradigm for..." | "A new approach to..." / "A new method for..." |
+| "Robust" without quantification | "...achieves robust performance" | "...achieves consistent performance across X conditions" |
+
+#### Writing Principles for Native-Sounding English
+
+1. **Direct, declarative sentences**: State claims directly without excessive qualification
+   - BAD: "It can be observed that our method tends to achieve better results"
+   - GOOD: "Our method achieves better results"
+
+2. **Active voice over passive**: Native speakers prefer active constructions
+   - BAD: "The policy is trained by our framework using..."
+   - GOOD: "Our framework trains the policy using..."
+
+3. **Specific verbs over generic ones**: Choose precise action verbs
+   - BAD: "We perform an analysis of..."
+   - GOOD: "We analyze..."
+
+4. **Avoid noun chains**: Break up long noun phrases
+   - BAD: "robot manipulation task performance improvement"
+   - GOOD: "improved performance on robot manipulation tasks"
+
+5. **Read recent top papers**: Before writing each paragraph, mentally reference how similar content is phrased in recent CoRL, ICRA, RSS papers. Match their directness and vocabulary.
+
+6. **No throat-clearing**: Start sentences with the subject, not preamble
+   - BAD: "In order to address this challenge, we propose..."
+   - GOOD: "We address this by..."
+
+7. **Contractions in informal explanations are acceptable**: Top venues accept natural prose
+   - "doesn't" instead of "does not" (in running text, not formal claims)
+
+#### Self-Check Before Submitting Draft
+
+Before presenting your draft to the user, re-read and ask:
+- Would a native English-speaking professor at Stanford/MIT/CMU write this sentence?
+- Does any sentence sound like ChatGPT wrote it?
+- Are there unnecessary hedging words I can delete?
+- Am I using "leverage," "utilize," or "facilitate" anywhere?
+
+**If you detect AI patterns in your own writing, rewrite before showing the draft.**
+
 ### Waiting for User's "OK"
 
 After presenting the draft, wait for user approval.
