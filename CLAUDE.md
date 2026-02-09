@@ -126,8 +126,20 @@ Start with `./start.sh --web` for a browser-based real-time view.
 
 - **URL**: http://127.0.0.1:5000 (default)
 - **Real-time**: Uses WebSocket to push updates when YAML files change
-- **Complementary**: Terminal mode remains fully functional
+- **Terminal Output**: Shows all 4 agent terminals in browser (no tmux attach needed)
 - **Environment**: Uses `uv` for Python package management (auto-installed)
+
+**Server Commands:**
+```bash
+# Stop web server
+pkill -f "server.py --port 5000"
+
+# Start web server
+cd web && uv run python server.py --port 5000 &
+
+# Restart
+pkill -f "server.py --port 5000"; sleep 1; cd web && uv run python server.py --port 5000 &
+```
 
 ## Efficient Consistency Checking
 
