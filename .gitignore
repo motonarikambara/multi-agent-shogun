@@ -16,6 +16,12 @@ skills/
 *.tmp
 *.bak
 
+# Python virtual environments (uv)
+.venv/
+web/.venv/
+__pycache__/
+*.pyc
+
 # Demo/analysis outputs (generated during tasks)
 demo_output/
 
@@ -26,9 +32,12 @@ queue/
 # Memory MCP data (local to each installation)
 memory/
 
-# Project context (local to each installation, except README)
+# Project context (local to each installation, except templates)
 context/
 !context/README.md
+!context/author_habits.yaml
+!context/glossary.yaml
+!context/references.md
 dashboard.md
 config/projects.yaml
 status/

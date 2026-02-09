@@ -14,10 +14,97 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Read shell setting (default: bash)
-SHELL_SETTING="bash"
+# ═══════════════════════════════════════════════════════════════════════════════
+# Platform detection
+# ═══════════════════════════════════════════════════════════════════════════════
+detect_platform() {
+    case "$(uname -s)" in
+        Darwin*)    PLATFORM="macos" ;;
+        Linux*)     PLATFORM="linux" ;;
+        CYGWIN*|MINGW*|MSYS*) PLATFORM="windows" ;;
+        *)          PLATFORM="unknown" ;;
+    esac
+}
+detect_platform
+
+# uv detection (for Python environment management)
+detect_uv() {
+    if command -v uv &>/dev/null; then
+        UV_AVAILABLE=true
+    else
+        UV_AVAILABLE=false
+    fi
+}
+
+# Python command detection (python3 or python)
+detect_python() {
+    if command -v python3 &>/dev/null; then
+        PYTHON_CMD="python3"
+    elif command -v python &>/dev/null; then
+        # Check if python is Python 3
+        if python --version 2>&1 | grep -q "Python 3"; then
+            PYTHON_CMD="python"
+        else
+            echo "Error: Python 3 is required but not found"
+            exit 1
+        fi
+    else
+        echo "Error: Python 3 is required but not found"
+        echo ""
+        if [ "$PLATFORM" = "macos" ]; then
+            echo "Install with: brew install python3"
+        elif [ "$PLATFORM" = "linux" ]; then
+            echo "Install with: sudo apt install python3"
+        fi
+        exit 1
+    fi
+}
+
+detect_uv
+
+# Check required dependencies
+check_dependencies() {
+    local missing=()
+    
+    # Check tmux
+    if ! command -v tmux &>/dev/null; then
+        missing+=("tmux")
+    fi
+    
+    # Check claude CLI
+    if ! command -v claude &>/dev/null; then
+        missing+=("claude (Claude Code CLI)")
+    fi
+    
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "Error: Missing required dependencies:"
+        for dep in "${missing[@]}"; do
+            echo "  - $dep"
+        done
+        echo ""
+        if [ "$PLATFORM" = "macos" ]; then
+            echo "Install tmux with: brew install tmux"
+        elif [ "$PLATFORM" = "linux" ]; then
+            echo "Install tmux with: sudo apt install tmux"
+        fi
+        echo "Install Claude Code CLI: https://claude.ai/code"
+        exit 1
+    fi
+}
+
+check_dependencies
+detect_python
+
+# Read shell setting (default: bash on Linux, zsh on macOS)
+if [ "$PLATFORM" = "macos" ]; then
+    DEFAULT_SHELL="zsh"
+else
+    DEFAULT_SHELL="bash"
+fi
+
+SHELL_SETTING="$DEFAULT_SHELL"
 if [ -f "./config/settings.yaml" ]; then
-    SHELL_SETTING=$(grep "^shell:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "bash")
+    SHELL_SETTING=$(grep "^shell:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "$DEFAULT_SHELL")
 fi
 
 # Colored log functions
@@ -64,6 +151,8 @@ generate_prompt() {
 SETUP_ONLY=false
 CLEAN_MODE=false
 SHELL_OVERRIDE=""
+WEB_MODE=false
+WEB_PORT=5000
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -74,6 +163,19 @@ while [[ $# -gt 0 ]]; do
         -c|--clean)
             CLEAN_MODE=true
             shift
+            ;;
+        -w|--web)
+            WEB_MODE=true
+            shift
+            ;;
+        -p|--port)
+            if [[ -n "$2" && "$2" != -* ]]; then
+                WEB_PORT="$2"
+                shift 2
+            else
+                echo "Error: -p option requires a port number"
+                exit 1
+            fi
             ;;
         -shell|--shell)
             if [[ -n "$2" && "$2" != -* ]]; then
@@ -93,8 +195,15 @@ while [[ $# -gt 0 ]]; do
             echo "Options:"
             echo "  -c, --clean         Reset queue and start (clean start)"
             echo "  -s, --setup-only    Setup tmux session only (no Claude startup)"
+            echo "  -w, --web           Start web dashboard (browser mode)"
+            echo "  -p, --port PORT     Web dashboard port (default: 5000)"
             echo "  -shell, --shell SH  Specify shell (bash or zsh)"
             echo "  -h, --help          Show this help"
+            echo ""
+            echo "Modes:"
+            echo "  Terminal only:    ./start.sh"
+            echo "  Terminal + Web:   ./start.sh --web"
+            echo "  Web only:         ./start.sh --web --setup-only"
             echo ""
             echo "Agent Configuration:"
             echo "  Author:     Writes paper paragraphs"
@@ -135,10 +244,16 @@ fi
 show_banner() {
     clear
     echo ""
+    local platform_label=""
+    if [ "$PLATFORM" = "macos" ]; then
+        platform_label="🍎 macOS"
+    elif [ "$PLATFORM" = "linux" ]; then
+        platform_label="🐧 Linux"
+    fi
     echo -e "\033[1;34m╔══════════════════════════════════════════════════════════════════════════════════╗\033[0m"
     echo -e "\033[1;34m║\033[0m                                                                                  \033[1;34m║\033[0m"
     echo -e "\033[1;34m║\033[0m   \033[1;37mPaper Writing System - Multi-Agent Academic Writing Framework\033[0m                 \033[1;34m║\033[0m"
-    echo -e "\033[1;34m║\033[0m                                                                                  \033[1;34m║\033[0m"
+    echo -e "\033[1;34m║\033[0m                                                            \033[0;36m$platform_label\033[0m        \033[1;34m║\033[0m"
     echo -e "\033[1;34m║\033[0m   \033[1;33mAuthor\033[0m + \033[1;36mReviewer×3\033[0m = High-Quality Academic Writing                        \033[1;34m║\033[0m"
     echo -e "\033[1;34m║\033[0m                                                                                  \033[1;34m║\033[0m"
     echo -e "\033[1;34m╚══════════════════════════════════════════════════════════════════════════════════╝\033[0m"
@@ -405,12 +520,74 @@ echo ""
 echo "     【paper session】4 panes"
 echo "     ┌─────────────────┬─────────────────┐"
 echo "     │     author      │   reviewer2     │"
-echo "     │                 │ (Exp. Rigor)    │"
+echo "     │                 │  (Soundness)    │"
 echo "     ├─────────────────┼─────────────────┤"
 echo "     │   reviewer1     │   reviewer3     │"
-echo "     │ (Tech Novelty)  │  (Clarity)      │"
+echo "     │   (Claims)      │  (Language)     │"
 echo "     └─────────────────┴─────────────────┘"
 echo ""
+
+# Start web server if requested
+if [ "$WEB_MODE" = true ]; then
+    log_info "Starting web dashboard on port $WEB_PORT..."
+    
+    WEB_DIR="$SCRIPT_DIR/web"
+    
+    if [ "$UV_AVAILABLE" = true ]; then
+        # Use uv for environment management
+        log_info "Using uv for Python environment..."
+        
+        # Create venv if not exists
+        if [ ! -d "$WEB_DIR/.venv" ]; then
+            log_info "  └─ Creating virtual environment..."
+            (cd "$WEB_DIR" && uv venv --quiet)
+        fi
+        
+        # Install dependencies
+        log_info "  └─ Installing dependencies..."
+        (cd "$WEB_DIR" && uv pip install -r requirements.txt --quiet)
+        
+        # Start the web server in background using uv run
+        (cd "$WEB_DIR" && uv run python server.py --port "$WEB_PORT") &
+        WEB_PID=$!
+    else
+        # Fallback: check if uv should be installed
+        echo ""
+        echo "  ⚠️  uv not found. Installing uv for Python environment management..."
+        
+        # Install uv
+        if [ "$PLATFORM" = "macos" ]; then
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+        elif [ "$PLATFORM" = "linux" ]; then
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+        fi
+        
+        # Add to PATH for this session
+        export PATH="$HOME/.cargo/bin:$PATH"
+        
+        if command -v uv &>/dev/null; then
+            UV_AVAILABLE=true
+            log_info "  └─ uv installed successfully"
+            
+            # Create venv and install deps
+            (cd "$WEB_DIR" && uv venv --quiet && uv pip install -r requirements.txt --quiet)
+            
+            # Start server
+            (cd "$WEB_DIR" && uv run python server.py --port "$WEB_PORT") &
+            WEB_PID=$!
+        else
+            echo "  ❌ Failed to install uv. Please install manually:"
+            echo "     curl -LsSf https://astral.sh/uv/install.sh | sh"
+            exit 1
+        fi
+    fi
+    echo ""
+    echo "  ╔══════════════════════════════════════════════════════════╗"
+    echo "  ║  Web Dashboard:  http://127.0.0.1:$WEB_PORT                       ║"
+    echo "  ║  (PID: $WEB_PID)                                              ║"
+    echo "  ╚══════════════════════════════════════════════════════════╝"
+    echo ""
+fi
 
 echo ""
 echo "  ╔══════════════════════════════════════════════════════════╗"
@@ -431,13 +608,35 @@ if [ "$SETUP_ONLY" = true ]; then
     echo ""
 fi
 
-echo "  Next steps:"
-echo "  ┌──────────────────────────────────────────────────────────┐"
-echo "  │  Attach to the session:                                  │"
-echo "  │     tmux attach-session -t paper                         │"
-echo "  │                                                          │"
-echo "  │  Talk to the author (pane 0):                            │"
-echo "  │     Provide a 'question' and 'answer' to write a         │"
-echo "  │     paragraph. Say 'OK' when ready for review.           │"
-echo "  └──────────────────────────────────────────────────────────┘"
-echo ""
+if [ "$WEB_MODE" = true ]; then
+    echo "  ┌──────────────────────────────────────────────────────────┐"
+    echo "  │  🌐 WEB MODE - No terminal needed!                       │"
+    echo "  ├──────────────────────────────────────────────────────────┤"
+    echo "  │  Open in browser:  http://127.0.0.1:$WEB_PORT                    │"
+    echo "  │                                                          │"
+    echo "  │  Everything happens in the browser:                      │"
+    echo "  │    ✓ View real-time terminal output                      │"
+    echo "  │    ✓ Send messages to author agent                       │"
+    echo "  │    ✓ Monitor review process                              │"
+    echo "  │    ✓ Edit context files (habits, glossary)               │"
+    echo "  │                                                          │"
+    echo "  │  To stop: kill $WEB_PID (web) and tmux kill-session -t paper   │"
+    echo "  └──────────────────────────────────────────────────────────┘"
+    echo ""
+    echo "  (Optional) Attach to tmux for direct access:"
+    echo "     tmux attach-session -t paper"
+    echo ""
+else
+    echo "  Next steps:"
+    echo "  ┌──────────────────────────────────────────────────────────┐"
+    echo "  │  Attach to the session:                                  │"
+    echo "  │     tmux attach-session -t paper                         │"
+    echo "  │                                                          │"
+    echo "  │  Talk to the author (pane 0):                            │"
+    echo "  │     Provide a 'question' and 'answer' to write a         │"
+    echo "  │     paragraph. Say 'OK' when ready for review.           │"
+    echo "  └──────────────────────────────────────────────────────────┘"
+    echo ""
+    echo "  (Tip: Use --web flag to enable browser dashboard)"
+    echo ""
+fi

@@ -111,7 +111,23 @@ config/
 instructions/
   author.md             # Author instructions
   reviewer.md           # Reviewer instructions
+
+web/
+  server.py             # Web dashboard server (Flask + SocketIO)
+  requirements.txt      # Python dependencies
+  .venv/                # Virtual environment (auto-created by uv)
+  templates/
+    index.html          # Dashboard UI
 ```
+
+## Web Dashboard (Optional)
+
+Start with `./start.sh --web` for a browser-based real-time view.
+
+- **URL**: http://127.0.0.1:5000 (default)
+- **Real-time**: Uses WebSocket to push updates when YAML files change
+- **Complementary**: Terminal mode remains fully functional
+- **Environment**: Uses `uv` for Python package management (auto-installed)
 
 ## Efficient Consistency Checking
 

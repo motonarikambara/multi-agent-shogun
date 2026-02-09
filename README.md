@@ -53,14 +53,39 @@ The reviewers are modeled as expert reviewers for top-tier venues (CoRL, ICRA, R
 
 ### Prerequisites
 
-- tmux
-- Claude Code CLI (`claude` command)
+**Supported Platforms**: macOS, Ubuntu/Linux
+
+| Dependency | macOS | Ubuntu/Linux |
+|------------|-------|--------------|
+| tmux | `brew install tmux` | `sudo apt install tmux` |
+| Claude Code CLI | [claude.ai/code](https://claude.ai/code) | [claude.ai/code](https://claude.ai/code) |
+| uv (optional) | Auto-installed | Auto-installed |
+
+The start script automatically:
+- Detects your platform
+- Installs `uv` for Python environment management (if not present)
+- Creates isolated virtual environment for the web dashboard
+
+**Default shell**: zsh on macOS, bash on Linux (override with `--shell bash` or `--shell zsh`)
+
+#### Manual uv Installation (optional)
+
+```bash
+# If auto-install fails, install uv manually:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
 ### Start the System
 
 ```bash
-# Start all agents
+# Terminal only (default)
 ./start.sh
+
+# Terminal + Web Dashboard (real-time browser view)
+./start.sh --web
+
+# Terminal + Web on custom port
+./start.sh --web --port 8080
 
 # Start with clean queue (reset all state)
 ./start.sh -c
@@ -73,6 +98,19 @@ The reviewers are modeled as expert reviewers for top-tier venues (CoRL, ICRA, R
 
 ```bash
 tmux attach-session -t paper
+```
+
+### Web Server Commands (when using `--web`)
+
+```bash
+# Stop the web server
+pkill -f "server.py --port 5000"
+
+# Start the web server manually
+cd ~/multi-agent-shogun/web && uv run python server.py --port 5000 &
+
+# Restart the web server
+pkill -f "server.py --port 5000"; sleep 1; cd ~/multi-agent-shogun/web && uv run python server.py --port 5000 &
 ```
 
 ### Interact with the Author
@@ -120,6 +158,12 @@ paper-writing-system/
 │   └── control.yaml          # User intervention commands
 ├── config/
 │   └── settings.yaml         # System settings
+├── web/
+│   ├── server.py             # Web dashboard server
+│   ├── requirements.txt      # Python dependencies
+│   ├── .venv/                # Virtual environment (auto-created by uv)
+│   └── templates/
+│       └── index.html        # Dashboard UI
 └── start.sh                  # Startup script
 ```
 
@@ -145,9 +189,26 @@ All reviewers share these characteristics:
 - **AI-Language Detection**: Reviewers catch AI-sounding patterns (leverages, utilize, facilitate, etc.)
 - **Efficient Consistency**: Uses `glossary.yaml` instead of reading full paper every time
 - **Habits Tracking**: `author_habits.yaml` tracks recurring patterns; user can add preferences
+- **Web Dashboard**: Real-time browser view of author-reviewer interactions (`--web` flag)
 - **Parallel Review**: All 3 reviewers review simultaneously in the first round
 - **Convergence Requirement**: All 3 reviewers must approve before a paragraph is finalized
 - **User Intervention**: PAUSE, REDIRECT, SKIP, and HABIT commands to control the process
+
+## Web Dashboard
+
+Start with `./start.sh --web` to enable the browser dashboard.
+
+```
+http://127.0.0.1:5000
+```
+
+Features:
+- **Real-time updates**: See draft changes and reviews as they happen
+- **Review panel**: View each reviewer's comments and decisions
+- **Context viewer**: Browse habits, glossary, and references
+- **Activity timeline**: Track file changes in real-time
+
+The terminal mode remains fully functional — web dashboard is optional and complementary.
 
 ## User Intervention
 
