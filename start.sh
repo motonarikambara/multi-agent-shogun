@@ -153,6 +153,7 @@ CLEAN_MODE=false
 SHELL_OVERRIDE=""
 WEB_MODE=false
 WEB_PORT=5000
+CLAUDE_MODEL="opus"  # Default model: opus, sonnet
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -186,6 +187,15 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             ;;
+        -m|--model)
+            if [[ -n "$2" && "$2" != -* ]]; then
+                CLAUDE_MODEL="$2"
+                shift 2
+            else
+                echo "Error: -m option requires model name (opus, sonnet)"
+                exit 1
+            fi
+            ;;
         -h|--help)
             echo ""
             echo "Paper Writing System - Multi-Agent Academic Writing Framework"
@@ -197,6 +207,7 @@ while [[ $# -gt 0 ]]; do
             echo "  -s, --setup-only    Setup tmux session only (no Claude startup)"
             echo "  -w, --web           Start web dashboard (browser mode)"
             echo "  -p, --port PORT     Web dashboard port (default: 5000)"
+            echo "  -m, --model MODEL   Claude model to use (opus, sonnet; default: opus)"
             echo "  -shell, --shell SH  Specify shell (bash or zsh)"
             echo "  -h, --help          Show this help"
             echo ""
@@ -238,6 +249,17 @@ if [ -n "$SHELL_OVERRIDE" ]; then
     fi
 fi
 
+# Read model from settings.yaml if not specified on command line
+if [ "$CLAUDE_MODEL" = "opus" ]; then
+    # Check if settings.yaml has a different model
+    if [ -f "$SCRIPT_DIR/config/settings.yaml" ]; then
+        SAVED_MODEL=$(grep -A2 "^models:" "$SCRIPT_DIR/config/settings.yaml" | grep "current:" | sed 's/.*current: *//' | tr -d ' ')
+        if [ -n "$SAVED_MODEL" ] && [ "$SAVED_MODEL" != "opus" ]; then
+            CLAUDE_MODEL="$SAVED_MODEL"
+        fi
+    fi
+fi
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Banner display
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -255,7 +277,7 @@ show_banner() {
     echo -e "\033[1;34m║\033[0m   \033[1;37mPaper Writing System - Multi-Agent Academic Writing Framework\033[0m                 \033[1;34m║\033[0m"
     echo -e "\033[1;34m║\033[0m                                                            \033[0;36m$platform_label\033[0m        \033[1;34m║\033[0m"
     echo -e "\033[1;34m║\033[0m   \033[1;33mAuthor\033[0m + \033[1;36mReviewer×3\033[0m = High-Quality Academic Writing                        \033[1;34m║\033[0m"
-    echo -e "\033[1;34m║\033[0m                                                                                  \033[1;34m║\033[0m"
+    echo -e "\033[1;34m║\033[0m   \033[0;35m🤖 Model: $CLAUDE_MODEL\033[0m                                                            \033[1;34m║\033[0m"
     echo -e "\033[1;34m╚══════════════════════════════════════════════════════════════════════════════════╝\033[0m"
     echo ""
 
@@ -470,7 +492,7 @@ if [ "$SETUP_ONLY" = false ]; then
     # Start Claude Code for all agents
     for i in {0..3}; do
         p=$((PANE_BASE + i))
-        tmux send-keys -t "paper:agents.${p}" "claude --model opus --dangerously-skip-permissions"
+        tmux send-keys -t "paper:agents.${p}" "claude --model $CLAUDE_MODEL --dangerously-skip-permissions"
         tmux send-keys -t "paper:agents.${p}" Enter
         sleep 0.5
     done
@@ -602,7 +624,7 @@ if [ "$SETUP_ONLY" = true ]; then
     echo "  ┌──────────────────────────────────────────────────────────┐"
     echo "  │  for p in \$(seq $PANE_BASE $((PANE_BASE+3))); do                                 │"
     echo "  │      tmux send-keys -t paper:agents.\$p \\                │"
-    echo "  │      'claude --model opus --dangerously-skip-permissions' Enter       │"
+    echo "  │      'claude --model $CLAUDE_MODEL --dangerously-skip-permissions' Enter       │"
     echo "  │  done                                                    │"
     echo "  └──────────────────────────────────────────────────────────┘"
     echo ""

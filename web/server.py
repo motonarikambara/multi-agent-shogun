@@ -22,6 +22,7 @@ from watchdog.events import FileSystemEventHandler
 BASE_DIR = Path(__file__).parent.parent
 QUEUE_DIR = BASE_DIR / "queue"
 CONTEXT_DIR = BASE_DIR / "context"
+CONFIG_DIR = BASE_DIR / "config"
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'paper-writing-system-secret'
@@ -150,6 +151,56 @@ def api_state():
 def api_context():
     """Get context files as JSON."""
     return jsonify(get_context_files())
+
+
+@app.route('/api/settings')
+def api_settings():
+    """Get current settings."""
+    settings_path = CONFIG_DIR / "settings.yaml"
+    if settings_path.exists():
+        return jsonify(load_yaml_safe(settings_path))
+    return jsonify({})
+
+
+@app.route('/api/settings/model', methods=['GET', 'POST'])
+def api_model():
+    """Get or set the current model."""
+    settings_path = CONFIG_DIR / "settings.yaml"
+    
+    if request.method == 'GET':
+        settings = load_yaml_safe(settings_path) if settings_path.exists() else {}
+        current_model = settings.get('models', {}).get('current', 'opus')
+        available_models = settings.get('models', {}).get('available', ['opus', 'sonnet'])
+        return jsonify({
+            'current': current_model,
+            'available': available_models
+        })
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        new_model = data.get('model', 'opus')
+        
+        # Validate model
+        if new_model not in ['opus', 'sonnet']:
+            return jsonify({'error': 'Invalid model. Use opus or sonnet.'}), 400
+        
+        # Update settings.yaml
+        settings = load_yaml_safe(settings_path) if settings_path.exists() else {}
+        if 'models' not in settings:
+            settings['models'] = {}
+        settings['models']['current'] = new_model
+        
+        with open(settings_path, 'w', encoding='utf-8') as f:
+            yaml.dump(settings, f, default_flow_style=False, allow_unicode=True)
+        
+        # Emit update to all clients
+        socketio.emit('settings_updated', {'models': settings['models']})
+        
+        return jsonify({
+            'status': 'success',
+            'model': new_model,
+            'message': f'Model changed to {new_model}. Restart agents to apply.'
+        })
 
 
 # WebSocket events

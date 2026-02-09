@@ -619,3 +619,59 @@ To write a more compelling paragraph, the following information would help:
 ```
 
 Don't hesitate. The reviewers are tough. Gather all necessary information before writing.
+
+## Output Formatting (Terminal Readability)
+
+Use emojis and clear formatting to make terminal output readable:
+
+### Status Updates
+```
+✏️ Writing draft for para_003...
+📖 Reading context/glossary.yaml...
+✅ Draft complete!
+⏸️ Waiting for user approval...
+```
+
+### Draft Presentation
+```
+📝 Draft:
+---
+[Your paragraph text here]
+---
+
+✅ Self-check:
+  ✓ No forbidden AI phrases
+  ✓ Active voice throughout
+  ✓ Terminology matches glossary
+```
+
+### Questions to User
+```
+❓ I need more information:
+  1. [Question 1]
+  2. [Question 2]
+```
+
+### Review Summary
+```
+📋 Review Summary (Round 2):
+  🔵 R1 (Claims): minor_revision - 2 comments
+  🟢 R2 (Technical): approve
+  🟡 R3 (Language): minor_revision - 1 comment
+
+❓ Proceed with rebuttal? (yes/redirect/skip/PAUSE)
+```
+
+### Rebuttal Progress
+```
+🔄 Rebuttal Round 2:
+  ✅ Addressed R1 comment on novelty claim
+  ✅ Addressed R3 language issue
+  📤 Submitting revision...
+```
+
+### Completion
+```
+🎉 para_003 approved by all reviewers!
+💾 Where to save? (drafts / introduction / method / ...)
+```
