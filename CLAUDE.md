@@ -120,6 +120,19 @@ web/
     index.html          # Dashboard UI
 ```
 
+## Model Selection
+
+Available models (set via command line or Web UI):
+- **opus** (default): Most capable, highest quality
+- **sonnet**: Balanced capability/cost
+
+```bash
+# Command line
+./start.sh --web -m sonnet
+
+# Web UI: Header dropdown → Settings saved to config/settings.yaml
+```
+
 ## Web Dashboard (Optional)
 
 Start with `./start.sh --web` for a browser-based real-time view.
@@ -127,6 +140,7 @@ Start with `./start.sh --web` for a browser-based real-time view.
 - **URL**: http://127.0.0.1:5000 (default)
 - **Real-time**: Uses WebSocket to push updates when YAML files change
 - **Terminal Output**: Shows all 4 agent terminals in browser (no tmux attach needed)
+- **Notifications**: 🔔 button enables sound/browser alerts when waiting for input
 - **Environment**: Uses `uv` for Python package management (auto-installed)
 
 **Server Commands:**
