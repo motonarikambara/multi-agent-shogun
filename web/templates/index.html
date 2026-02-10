@@ -774,20 +774,32 @@
         <div class="quick-input-section">
             <div class="quick-input-container">
                 <div>
-                    <textarea id="messageInput" class="quick-input-field" placeholder="Author へのメッセージ、または Q&A を入力&#10;&#10;例: Q: Why does...&#10;    A: Because...&#10;    ---&#10;    Q: How does...&#10;    A: By using..."></textarea>
+                    <textarea id="messageInput" class="quick-input-field" placeholder="Author へのメッセージ、または Q&A を入力&#10;&#10;例: Q: Why does...&#10;    A: Because...&#10;    section: method&#10;    ---&#10;    Q: How does...&#10;    A: By using...&#10;    section: introduction"></textarea>
                     <div class="help-text">
-                        💡 <strong>OK</strong> = approve draft for review |
-                        <strong>habit: X</strong> = add writing preference |
-                        <strong>redirect: X</strong> = redirect author's focus |
+                        💡 <strong>OK</strong> = ドラフト承認 → 自動レビュー開始 |
+                        <strong>section:</strong> = 保存先セクション |
+                        <strong>PAUSE</strong> = 中断 |
                         <strong>Batch</strong> = Q/A を `---` で区切る
                     </div>
                 </div>
                 <div class="quick-buttons">
+                    <div style="display: flex; gap: 0.4rem; align-items: center;">
+                        <label for="sectionSelect" style="font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">Section:</label>
+                        <select id="sectionSelect" style="flex: 1; background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.4rem; border-radius: 4px; font-size: 0.8rem;">
+                            <option value="">drafts (default)</option>
+                            <option value="abstract">abstract</option>
+                            <option value="introduction">introduction</option>
+                            <option value="related_work">related_work</option>
+                            <option value="method">method</option>
+                            <option value="experiments">experiments</option>
+                            <option value="results">results</option>
+                            <option value="discussion">discussion</option>
+                            <option value="conclusion">conclusion</option>
+                        </select>
+                    </div>
                     <button class="quick-btn primary" onclick="sendMessage()">Send → Author</button>
-                    <button class="quick-btn" onclick="fillAndSend('OK')" title="Approve and proceed to review">✓ OK</button>
-                    <button class="quick-btn" onclick="fillAndSend('yes')" title="Confirm/agree">yes</button>
+                    <button class="quick-btn" onclick="fillAndSend('OK')" title="Approve draft → auto-rebuttal starts">✓ OK</button>
                     <button class="quick-btn warning" onclick="fillAndSend('PAUSE')" title="Pause the workflow">⏸ Pause</button>
-                    <button class="quick-btn" onclick="fillAndSend('auto')" title="Let author proceed automatically">🤖 auto</button>
                 </div>
             </div>
         </div>
@@ -1079,11 +1091,8 @@
                 /Would you like/i,
                 /shall I proceed/i,
                 /Say ['"]?OK['"]? when/i,
-                /Proceed with rebuttal\?/i,
-                /Options:.*yes.*PAUSE/i,
-                /Where to save\?/i,
                 /waiting for.*input/i,
-                /proceed\?.*\(yes/i,
+                /waiting for.*ok/i,
                 /❯\s*$/  // Empty prompt at end
             ];
             
@@ -1094,10 +1103,6 @@
                 let question = 'Authorがユーザーの入力を待っています';
                 if (/Would you like([^?]+\?)/i.test(authorOutput)) {
                     question = 'Would you like' + authorOutput.match(/Would you like([^?]+\?)/i)[1];
-                } else if (/Proceed with rebuttal/i.test(authorOutput)) {
-                    question = 'Rebuttalを開始しますか？ (yes/redirect/skip/PAUSE)';
-                } else if (/Where to save/i.test(authorOutput)) {
-                    question = '保存先を指定してください (drafts / section名)';
                 } else if (/Say ['"]?OK['"]?/i.test(authorOutput)) {
                     question = 'ドラフトを確認してください。OKで次へ進みます';
                 }
@@ -1150,6 +1155,9 @@
         
         // Connection status
         socket.on('connect', () => {
+            // Clear any pending events from before reconnect to prevent
+            // replaying old messages into fresh tmux panes
+            socket.sendBuffer = [];
             document.getElementById('connectionStatus').classList.remove('disconnected');
             document.getElementById('connectionText').textContent = 'Connected';
         });
@@ -1585,13 +1593,31 @@
         function sendMessage() {
             const input = document.getElementById('messageInput');
             if (!input) return;
-            const raw = input.value.trim();
+            let raw = input.value.trim();
             if (!raw) {
                 showToast('Please enter a message', true);
                 return;
             }
 
+            // Append section from dropdown if Q&A detected and no section: already in text
+            const sectionSelect = document.getElementById('sectionSelect');
+            const selectedSection = sectionSelect ? sectionSelect.value : '';
             const isBatch = /(^|\n)\s*Q:\s*/i.test(raw) && /(^|\n)\s*A:\s*/i.test(raw);
+
+            if (isBatch && selectedSection && !/\bsection:\s/i.test(raw)) {
+                // Append section to each Q&A block that doesn't already have one
+                raw = raw.replace(/(\n-{3,})/g, `\nsection: ${selectedSection}$1`);
+                // Also append to the last block
+                if (!/section:\s/i.test(raw.split(/\n-{3,}\n/).pop())) {
+                    raw += `\nsection: ${selectedSection}`;
+                }
+            } else if (!isBatch && selectedSection && /(^|\n)\s*Q:\s*/i.test(raw)) {
+                // Single Q&A with section
+                if (!/\bsection:\s/i.test(raw)) {
+                    raw += `\nsection: ${selectedSection}`;
+                }
+            }
+
             const items = isBatch ? parseBatchInput(raw) : [];
             const message = isBatch ? buildBatchMessage(items, raw) : raw;
             socket.emit('send_message', { target: 'author', message });

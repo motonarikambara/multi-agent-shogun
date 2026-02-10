@@ -22,19 +22,27 @@
 
 ### 使い方（最短）
 
-1. Authorに **question** と **answer**
+1. Authorに **Q&A** + **保存先セクション** を送る
 2. Authorがドラフト作成
-3. **OK** → レビュー開始
+3. **OK** → レビュー＆リバッタルが自動で完了
+
+**入力例**:
+```
+Q: Why does our method outperform?
+A: Because of X, Y, Z
+section: method
+```
 
 **複数 Q&A（バッチ）**:
 ```
 Q: ...
 A: ...
+section: introduction
 ---
 Q: ...
 A: ...
+section: method
 ```
-Web UI の「Question & Answer (Batch)」から送ると、複数段落をまとめてレビューします。
 
 ---
 
@@ -63,17 +71,17 @@ Web UI の「Question & Answer (Batch)」から送ると、複数段落をまと
 
 ### ユーザー介入コマンド
 
-`OK` / `yes` / `PAUSE` / `redirect: [指示]` / `skip reviewer N` / `habit: [好み]`
+`OK` / `PAUSE` / `redirect: [指示]` / `skip reviewer N` / `habit: [好み]`
 
 ### Webサーバー操作
 
 ```bash
 # 停止
-pkill -f "server.py --port 5000"
+pkill -f "server.py --port 5050"
 
 # 再起動
-pkill -f "server.py --port 5000"; sleep 1
-cd web && uv run python server.py --port 5000 &
+pkill -f "server.py --port 5050"; sleep 1
+cd web && uv run python server.py --port 5050 &
 ```
 
 ---

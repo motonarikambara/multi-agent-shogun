@@ -30,6 +30,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'paper-writing-system-secret'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+# Track server start time for startup grace period
+_server_start_time = time.time()
+
 # File watcher for real-time updates
 class QueueFileHandler(FileSystemEventHandler):
     """Watch queue directory for changes and emit updates."""
@@ -281,17 +284,46 @@ def get_all_pane_outputs() -> dict:
 
 
 def is_claude_running(pane: str) -> bool:
-    """Check if Claude Code is running in a tmux pane."""
+    """Check if Claude Code is actually running and ready in a tmux pane.
+    
+    Must distinguish between:
+    - Shell has 'claude' typed as a command (NOT ready)
+    - Claude Code is actually running and accepting input (ready)
+    """
     try:
         output = capture_tmux_pane(pane, 30)
-        # Claude Code shows specific patterns when running
-        if any(kw in output for kw in ['claude', 'Claude', '❯', 'thinking', 'Churned']):
-            return True
-        # If pane ends with bare shell prompt (% or $), Claude is NOT running
-        stripped = output.rstrip()
-        if stripped.endswith('%') or stripped.endswith('$'):
+        if not output or not output.strip():
             return False
-        return True  # Assume running if unclear
+        
+        # Get the last few non-empty lines
+        lines = [l for l in output.strip().splitlines() if l.strip()]
+        if not lines:
+            return False
+        
+        last_line = lines[-1].strip()
+        
+        # Claude Code's interactive prompt is '❯' (at the start of a line)
+        # This only appears when Claude is ready for user input
+        if last_line == '❯' or last_line.endswith('❯'):
+            return True
+        
+        # Claude is actively thinking/processing (spinner, "thinking", etc.)
+        if any(kw in output for kw in ['thinking', 'Churned', '⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']):
+            return True
+        
+        # If the last line is a bare shell prompt (% or $), Claude is NOT running
+        if last_line.endswith('%') or last_line.endswith('$'):
+            return False
+        
+        # If we see "claude" only in a command being typed/executed, it's NOT ready
+        # (e.g., "claude --model opus --dangerously-skip-permissions")
+        if 'claude --model' in output or 'dangerously-skip-permissions' in output:
+            # Check if Claude has actually started (look for its UI elements)
+            if '❯' not in output and 'tips:' not in output:
+                return False
+        
+        # Default: assume NOT running (safe - prevents sending to shell)
+        return False
     except Exception:
         return False
 
@@ -343,6 +375,16 @@ def handle_send_message(data):
         emit('message_result', {'success': False, 'error': 'Empty message'})
         return
     
+    # Reject messages during startup grace period (first 10 seconds)
+    # This prevents replayed Socket.IO events from reaching shell prompts
+    elapsed = time.time() - _server_start_time
+    if elapsed < 10:
+        emit('message_result', {
+            'success': False,
+            'error': f'Server starting up. Wait {int(10 - elapsed)}s for agents to initialize.'
+        })
+        return
+    
     # Map target names to tmux panes
     pane_map = {
         'author': 'paper:0.0',
@@ -371,6 +413,14 @@ def api_send():
     data = request.json
     target = data.get('target', 'author')
     message = data.get('message', '')
+    
+    # Reject during startup grace period
+    elapsed = time.time() - _server_start_time
+    if elapsed < 10:
+        return jsonify({
+            'success': False,
+            'error': f'Server starting up. Wait {int(10 - elapsed)}s for agents to initialize.'
+        }), 503
     
     pane_map = {
         'author': 'paper:0.0',

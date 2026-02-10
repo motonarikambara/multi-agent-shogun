@@ -96,15 +96,17 @@ check_claude_login() {
     # Try to detect login status without triggering interactive login
     local output=""
     if output=$(claude auth status 2>&1); then
+        # Command succeeded - check for negative indicators
         if echo "$output" | grep -qiE "not logged|not authenticated|login required|please log in"; then
             echo "Error: Claude Code CLI is not logged in."
             echo "Run: claude auth login"
             exit 1
         fi
+        # Command succeeded and no negative keywords → assume logged in
         return 0
     fi
 
-    # Fallback for older CLI versions
+    # auth status failed - try whoami as fallback
     output=$(claude whoami 2>&1 || true)
     if echo "$output" | grep -qiE "not logged|not authenticated|login required|please log in"; then
         echo "Error: Claude Code CLI is not logged in."
@@ -112,10 +114,14 @@ check_claude_login() {
         exit 1
     fi
 
-    # If we cannot determine status, fail fast to avoid interactive login screens
-    echo "Error: Unable to verify Claude Code CLI login status."
-    echo "Please log in first: claude auth login"
-    exit 1
+    # Check for positive indicators in whoami output
+    if echo "$output" | grep -qiE "@|logged in|authenticated|user:"; then
+        return 0
+    fi
+
+    # Cannot determine status - warn but don't block
+    log_info "Warning: Could not verify Claude CLI login status."
+    log_info "If login fails, run: claude auth login"
 }
 
 # Read shell setting (default: bash on Linux, zsh on macOS)
@@ -175,7 +181,7 @@ SETUP_ONLY=false
 CLEAN_MODE=false
 SHELL_OVERRIDE=""
 WEB_MODE=false
-WEB_PORT=5000
+WEB_PORT=5050
 CLAUDE_MODEL="opus"  # Default model: opus, sonnet
 
 while [[ $# -gt 0 ]]; do
@@ -246,11 +252,10 @@ while [[ $# -gt 0 ]]; do
             echo "  Reviewer 3: Presentation & Language Authenticity"
             echo ""
             echo "Workflow:"
-            echo "  1. User provides 'question' and 'answer' to Author"
+            echo "  1. User provides Q&A + section to Author"
             echo "  2. Author writes paragraph"
-            echo "  3. User says OK → 3 reviewers review in parallel"
-            echo "  4. Author rebuttals → Repeat until all approve"
-            echo "  5. Approved paragraph appended to tex"
+            echo "  3. User says OK → auto-rebuttal until all approve"
+            echo "  4. Approved paragraph saved to specified section"
             echo ""
             exit 0
             ;;
@@ -501,34 +506,87 @@ if [ "$SETUP_ONLY" = false ]; then
     log_info "  └─ Claude Code starting for all agents..."
     echo ""
 
-    # Wait for startup (max 30 seconds)
-    echo "  Waiting for Claude Code to start (max 30s)..."
-    for i in {1..30}; do
-        if tmux capture-pane -t "paper:agents.${PANE_BASE}" -p | grep -q "bypass permissions"; then
-            echo "  └─ Claude Code started (${i}s)"
-            break
-        fi
-        sleep 1
-    done
+    # ── Accept --dangerously-skip-permissions disclaimer for each pane ──
+    # Claude Code shows a security disclaimer with options:
+    #   1. No, exit  (selected by default)
+    #   2. Yes, I accept
+    # We need to press Down + Enter to accept it.
+    accept_disclaimer() {
+        local pane="$1"
+        local label="$2"
+        for attempt in $(seq 1 30); do
+            local output
+            output=$(tmux capture-pane -t "$pane" -p 2>/dev/null || true)
+            if echo "$output" | grep -q "Yes, I accept"; then
+                # Disclaimer is showing — select "Yes, I accept"
+                tmux send-keys -t "$pane" Down
+                sleep 0.3
+                tmux send-keys -t "$pane" Enter
+                log_info "  └─ $label: disclaimer accepted"
+                return 0
+            fi
+            # Already past disclaimer (e.g., previously accepted)
+            if echo "$output" | grep -qE "^❯"; then
+                log_info "  └─ $label: no disclaimer (already accepted)"
+                return 0
+            fi
+            sleep 1
+        done
+        log_info "  └─ $label: disclaimer not detected (continuing)"
+        return 0
+    }
 
-    # Load instructions for each agent
+    echo "  Accepting security disclaimer..."
+    for i in {0..3}; do
+        p=$((PANE_BASE + i))
+        accept_disclaimer "paper:agents.${p}" "${PANE_LABELS[$i]}" &
+    done
+    wait  # Wait for all background accept_disclaimer jobs
+
+    # ── Wait for Claude Code to be fully ready (❯ prompt) ──
+    echo "  Waiting for Claude Code to be ready (max 60s)..."
+    wait_for_claude_ready() {
+        local pane="$1"
+        local label="$2"
+        for attempt in $(seq 1 60); do
+            local output
+            output=$(tmux capture-pane -t "$pane" -p 2>/dev/null || true)
+            # Only match the actual Claude interactive prompt
+            if echo "$output" | grep -qE "^❯|tips:|Welcome"; then
+                log_info "  └─ $label ready (${attempt}s)"
+                return 0
+            fi
+            sleep 1
+        done
+        log_info "  └─ $label: timeout (continuing anyway)"
+        return 0
+    }
+
+    # Wait for author pane first
+    wait_for_claude_ready "paper:agents.${PANE_BASE}" "Author"
+
+    # Brief wait for reviewers to catch up
+    sleep 5
+
+    # ── Load instructions for each agent ──
     log_action "Loading instructions for each agent..."
 
     # Author
-    sleep 2
     tmux send-keys -t "paper:agents.${PANE_BASE}" "Read instructions/author.md and understand your role."
     sleep 0.5
     tmux send-keys -t "paper:agents.${PANE_BASE}" Enter
-    log_info "  └─ Author: instructions loaded"
+    log_info "  └─ Author: instructions sent"
 
-    # Reviewers
+    # Reviewers (wait briefly between each to avoid overload)
     for i in 1 2 3; do
-        sleep 2
+        sleep 3
         p=$((PANE_BASE + i))
+        # Verify Claude is ready in this pane before sending
+        wait_for_claude_ready "paper:agents.${p}" "Reviewer ${i}"
         tmux send-keys -t "paper:agents.${p}" "Read instructions/reviewer.md and understand your role. You are reviewer${i}."
         sleep 0.5
         tmux send-keys -t "paper:agents.${p}" Enter
-        log_info "  └─ Reviewer ${i}: instructions loaded"
+        log_info "  └─ Reviewer ${i}: instructions sent"
     done
 
     log_success "All agents initialized!"

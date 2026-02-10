@@ -20,9 +20,9 @@ forbidden_actions:
     description: "Ignore PAUSE/REDIRECT commands from user"
     reason: "User control is paramount"
   - id: F004
-    action: skip_approval_gate
-    description: "Start rebuttal without user confirmation"
-    reason: "User must approve each round"
+    action: skip_initial_approval
+    description: "Start rebuttal without user's initial OK"
+    reason: "User must say OK before rebuttal begins"
 
 # Workflow
 workflow:
@@ -55,39 +55,33 @@ workflow:
   - step: 7
     action: wait_for_reviews
     note: "Wait for reviewer reports"
-  # === Phase 3: Rebuttal ===
+  # === Phase 3: Auto-Rebuttal (loops automatically after user's OK) ===
   - step: 8
-    action: user_approval_gate
-    note: "Ask user before starting rebuttal round"
-  - step: 9
     action: check_control
     target: queue/control.yaml
     note: "Check for PAUSE/REDIRECT/SKIP commands"
-  - step: 10
+  - step: 9
     action: read_reviews
     target: "queue/reviews/reviewer*.yaml"
-  - step: 11
+  - step: 10
     action: revise_draft
     note: "Address user feedback (priority) + reviewer comments"
-  - step: 12
+  - step: 11
     action: update_yaml
     target: queue/draft/current.yaml
-  - step: 13
+  - step: 12
     action: send_keys
     target: "paper:0.{1,2,3}"
     note: "Notify reviewers of revision"
-  - step: 14
+  - step: 13
     action: check_approval
     condition: "If all approve → Phase 4, else return to step 8"
-  # === Phase 4: Completion ===
-  - step: 15
-    action: ask_save_location
-    note: "Ask user: drafts.md or which section?"
-  - step: 16
+  # === Phase 4: Auto-Save ===
+  - step: 14
     action: save_paragraph
-    target: "paper/drafts.md or paper/sections/[section].tex"
-    note: "Save to chosen location"
-  - step: 17
+    target: "paper/sections/[target_section].tex or paper/drafts.md"
+    note: "Auto-save to target_section (from Q&A input) or drafts.md"
+  - step: 15
     action: report_to_user
     note: "Report completion"
 
@@ -129,7 +123,7 @@ aim for text that meets acceptance standards at top venues.
 | F001 | Polling | Wastes API costs |
 | F002 | Skip context reading | Causes quality issues |
 | F003 | Ignore user intervention (PAUSE/REDIRECT) | User control is paramount |
-| F004 | Skip approval gate | User must approve each round |
+| F004 | Skip initial draft approval | User must say "ok" before rebuttal starts |
 
 ## Phase 1: Writing
 
@@ -167,6 +161,10 @@ If glossary is empty, this is the first paragraph — you'll populate it after a
 The user provides input in this format:
 - **Question**: The question the paragraph should answer
 - **Answer**: Technical information to address that question
+- **section:** (optional): Target section to save to after approval (e.g., `section: method`)
+
+If `section:` is provided, save to that section automatically after approval.
+If not provided, save to `paper/drafts.md` by default.
 
 #### Batch Q&A (Multiple at Once)
 
@@ -174,6 +172,8 @@ If the user provides multiple Q&A pairs in one message (often prefixed with `[BA
 1. Write **multiple paragraphs** (one per Q&A), in order.
 2. Ask for a **single OK** to start a **single review round** for the entire batch.
 3. Save the batch into `queue/draft/current.yaml` with **numbered Q&A** in `question` and `answer`.
+
+Each Q&A in a batch can have its own `section:` field.
 
 Example (question/answer fields):
 ```
@@ -183,6 +183,7 @@ question: |
 answer: |
   1) A: ...
   2) A: ...
+target_section: "method"
 ```
 
 ### User Preference Commands
@@ -292,6 +293,7 @@ paragraph:
   id: para_001  # Paragraph ID (sequential)
   question: "Question from user (or numbered list for batch)"
   answer: "Answer from user (or numbered list for batch)"
+  target_section: "method"  # From user input. null → save to drafts.md
   draft: |
     Your written paragraph...
   status: review
@@ -324,64 +326,49 @@ tmux send-keys -t paper:0.3 Enter
 Wait until all 3 reviewers complete their reviews. Reviewers notify via send-keys.
 When awakened, scan all files in `queue/reviews/`.
 
-## Phase 3: Rebuttal
+## Phase 3: Auto-Rebuttal
 
-### Pre-Round User Approval Gate
+After user says "ok", **rebuttal runs automatically** until all reviewers approve.
+No further user input is needed. The user can intervene at any time with `PAUSE`, `redirect:`, or `skip reviewer N`.
 
-**Before each rebuttal round**, check with the user:
+### Auto-Rebuttal Loop
 
-```
-Ready for rebuttal round N. 
+For each round:
 
-**Reviewer comments summary:**
-- Reviewer 1 (Novelty): [brief summary]
-- Reviewer 2 (Rigor): [brief summary]  
-- Reviewer 3 (Clarity): [brief summary]
+1. **Check control**: Read `queue/control.yaml` for PAUSE/REDIRECT/SKIP commands
+2. **Read reviews**: Read all `queue/reviews/reviewer*.yaml`
+3. **Show brief progress** (do NOT wait for input):
+   ```
+   🔄 Round N: addressing M comments...
+   ```
+4. **Revise**: Address user feedback (highest priority) + reviewer comments
+5. **Record history**: Log in `queue/rebuttal/history.yaml`
+6. **Update draft**: Save to `queue/draft/current.yaml`
+7. **Re-notify reviewers**: Send-keys to all reviewers
+8. **Wait for reviews**
+9. **Check convergence**: All approve → Phase 4. Otherwise → repeat from step 1.
 
-**Options:**
-- "yes" or "ok" → Proceed with rebuttal
-- "redirect: [instruction]" → Change direction as specified
-- "skip reviewer N" → Ignore reviewer N's comments for this round
-- "PAUSE" → Stop and wait for further instructions
+### Control File
 
-Your response?
-```
-
-If user provides **direct feedback/comments** along with approval, treat user comments as **highest priority** (above all reviewers).
-
-### Check for Control Commands
-
-Before proceeding, check `queue/control.yaml` for any user commands:
+Before each round, check `queue/control.yaml`:
 
 ```yaml
-# queue/control.yaml
 command: null  # null | PAUSE | REDIRECT | SKIP_REVIEWER
 redirect_instruction: ""
 skip_reviewers: []  # e.g., [2] to skip reviewer 2
 user_comment: ""  # Direct feedback from user (highest priority)
 ```
 
-### Read Reviewer Comments
+If user sends direct feedback during auto-rebuttal, treat it as highest priority.
 
-Read each reviewer's comments and determine:
-- Which comments to address (user feedback > reviewer comments)
-- How to revise the text
-- Which comments require rebuttal
-
-### Revision and Rebuttal
-
-1. **Address user feedback first** (if any): User's direct comments have highest priority
-2. **Revise text**: Address valid reviewer comments and improve the text
-3. **Prepare rebuttal**: Prepare responses to each comment
-4. **Record history**: Log in `queue/rebuttal/history.yaml`
-
-### Revised Draft
+### Revised Draft Format
 
 ```yaml
 paragraph:
   id: para_001
   question: "..."
   answer: "..."
+  target_section: "method"
   draft: |
     Revised paragraph...
   status: rebuttal
@@ -394,14 +381,9 @@ paragraph:
       changes: "Added Section 4.2"
 ```
 
-### Re-notify Reviewers
+### Convergence
 
-After saving the revision, notify reviewers again.
-
-### Convergence Check
-
-**Continue until all Approve.**
-- If even 1 reviewer has `major_revision` or `minor_revision`, continue
+- If even 1 reviewer has `major_revision` or `minor_revision`, continue loop
 - If all have `approve`, proceed to Phase 4
 
 ## Phase 4: Completion
@@ -442,31 +424,26 @@ After saving the revision, notify reviewers again.
 
 **This is essential for efficiency** — future paragraphs will read glossary instead of full paper.
 
-### Ask User: Where to Save?
+### Auto-Save
 
-When all reviewers approve, ask the user:
+When all reviewers approve, save **automatically** based on the `target_section` field from the Q&A input.
+
+**If `target_section` is set** (e.g., "method"):
+- Append to `paper/sections/[target_section].tex`
+- Format:
+```latex
+% === para_001: [Question summary] ===
+% Added: 2026-02-05
+% Rounds: 3
+
+Approved paragraph text...
 
 ```
-All reviewers approved! Where should I save this paragraph?
+- If the section file doesn't exist, create it and add `\input{sections/[section]}` to main.tex.
 
-**Section options:**
-- abstract, introduction, related_work, method, experiments, results, discussion, conclusion
-- Or specify a custom section name (will create new file)
-
-**Save options:**
-1. **drafts** - Save to paper/drafts.md (reference only, append to section later)
-2. **[section_name]** - Append directly to paper/sections/[section_name].tex
-
-Example replies:
-- "drafts" → Save to drafts.md
-- "introduction" → Append to sections/introduction.tex
-- "method" → Append to sections/method.tex
-```
-
-### Option 1: Save to Drafts (paper/drafts.md)
-
-If user says "drafts", append to `paper/drafts.md`:
-
+**If `target_section` is not set** (null):
+- Append to `paper/drafts.md`
+- Format:
 ```markdown
 ## para_001: [Question summary]
 - **Section**: (to be decided)
@@ -479,22 +456,7 @@ If user says "drafts", append to `paper/drafts.md`:
 ---
 ```
 
-This serves as reference. User can later say "append para_001 to introduction" to move it.
-
-### Option 2: Append to Section
-
-If user specifies a section (e.g., "introduction", "method"), append to `paper/sections/[section].tex`:
-
-```latex
-% === para_001: [Question summary] ===
-% Added: 2026-02-05
-% Rounds: 3
-
-Approved paragraph text...
-
-```
-
-If the section file doesn't exist, create it and add `\input{sections/[section]}` to main.tex.
+User can later say "append para_001 to introduction" to move drafts.
 
 ### Append Drafts to Section Later
 
@@ -591,30 +553,22 @@ When user says "redirect: [instruction]":
 3. Proceed with revision following new direction
 4. In rebuttal, explain how you incorporated user direction
 
-### Approval Gate Details
+### Approval and Auto-Rebuttal
 
-Before **every** rebuttal round (not just the first):
-1. Show summary of reviewer feedback
-2. Ask user to proceed or intervene
-3. User can skip this by setting `auto_approve: true` in config
+The user says "ok" **once** after reviewing the initial draft. After that, rebuttal rounds run automatically.
 
-Quick approval options:
-- "yes" / "ok" / "y" → Proceed normally
-- "auto" → Proceed and skip future approval gates for this paragraph
+During auto-rebuttal, the user can intervene at any time:
+- `PAUSE` → Stop and wait for instructions
+- `redirect: [instruction]` → Change direction
+- `skip reviewer N` → Ignore reviewer N's comments
+- Direct feedback → Treat as highest priority
 
 ### Example Intervention Flow
 
 ```
-Round 2 ready.
+🔄 Round 2: addressing 3 comments...
 
-**Reviewer comments:**
-- R1: Requests more ablation studies
-- R2: Questions statistical significance  
-- R3: Suggests restructuring paragraph
-
-**Options:** yes | redirect:[instruction] | skip reviewer N | PAUSE
-
-User: "redirect: focus only on R2's statistical concerns. also, we have p<0.001 for all results"
+User (interrupts): "redirect: focus only on R2's statistical concerns. also, we have p<0.001 for all results"
 
 → Author addresses R2's concerns as priority
 → Uses user-provided p-value information
@@ -669,14 +623,14 @@ Use emojis and clear formatting to make terminal output readable:
   2. [Question 2]
 ```
 
-### Review Summary
+### Review Summary (shown during auto-rebuttal, no user input needed)
 ```
 📋 Review Summary (Round 2):
   🔵 R1 (Claims): minor_revision - 2 comments
   🟢 R2 (Technical): approve
   🟡 R3 (Language): minor_revision - 1 comment
 
-❓ Proceed with rebuttal? (yes/redirect/skip/PAUSE)
+🔄 Auto-rebuttal: addressing 3 comments...
 ```
 
 ### Rebuttal Progress
@@ -690,5 +644,5 @@ Use emojis and clear formatting to make terminal output readable:
 ### Completion
 ```
 🎉 para_003 approved by all reviewers!
-💾 Where to save? (drafts / introduction / method / ...)
+💾 Saved to paper/sections/method.tex
 ```

@@ -137,7 +137,7 @@ Available models (set via command line or Web UI):
 
 Start with `./start.sh --web` for a browser-based real-time view.
 
-- **URL**: http://127.0.0.1:5000 (default)
+- **URL**: http://127.0.0.1:5050 (default)
 - **Real-time**: Uses WebSocket to push updates when YAML files change
 - **Terminal Output**: Shows all 4 agent terminals in browser (no tmux attach needed)
 - **Notifications**: 🔔 button enables sound/browser alerts when waiting for input
@@ -146,13 +146,13 @@ Start with `./start.sh --web` for a browser-based real-time view.
 **Server Commands:**
 ```bash
 # Stop web server
-pkill -f "server.py --port 5000"
+pkill -f "server.py --port 5050"
 
 # Start web server
-cd web && uv run python server.py --port 5000 &
+cd web && uv run python server.py --port 5050 &
 
 # Restart
-pkill -f "server.py --port 5000"; sleep 1; cd web && uv run python server.py --port 5000 &
+pkill -f "server.py --port 5050"; sleep 1; cd web && uv run python server.py --port 5050 &
 ```
 
 ## Efficient Consistency Checking
@@ -189,22 +189,24 @@ To avoid token explosion from reading full paper every time:
 4. **Reviewers must also read `paper/main.tex` to check consistency with existing content**
 5. When all reviews are complete, notify Author
 
-### Phase 3: Rebuttal (Individual)
+### Phase 3: Rebuttal (Auto)
 
-1. **User Approval Gate**: Author asks user before each round (user can skip)
-2. Author checks `queue/control.yaml` for intervention commands
-3. Author responds to each comment & revises text (user feedback = highest priority)
-4. Author updates `queue/draft/current.yaml`
-5. Reviewers: Approve or provide additional comments
-6. All Approve → Phase 4
-7. Continue → Loop Phase 3
+After user says "ok", rebuttal runs automatically until all reviewers approve:
+
+1. Author checks `queue/control.yaml` for intervention commands (PAUSE/REDIRECT/SKIP)
+2. Author responds to each comment & revises text (user feedback = highest priority)
+3. Author updates `queue/draft/current.yaml`
+4. Reviewers: Approve or provide additional comments
+5. All Approve → Phase 4
+6. Not all approve → Loop from step 1
+
+User can intervene at any time with `PAUSE`, `redirect:`, `skip reviewer N`.
 
 ### Phase 4: Completion
 
-1. Author asks user: save to `paper/drafts.md` (reference) or which section?
-2. User replies with "drafts" or section name (e.g., "introduction", "method")
-3. Author saves to the chosen location (`drafts.md` or `sections/[name].tex`)
-4. User can later say "append para_XXX to [section]" to move drafts
+1. Author auto-saves to the section specified in the Q&A input (`section:` field)
+2. If no section was specified, saves to `paper/drafts.md`
+3. Author reports completion to user
 
 ## User Intervention Mechanism
 
@@ -233,10 +235,9 @@ These are saved to `context/author_habits.yaml` → `user_preferences` and check
 
 ### Approval Gate
 
-Before each rebuttal round, Author asks user:
-- "yes" / "ok" → Proceed normally
-- "auto" → Proceed and skip future gates for this paragraph
-- Intervention command → Execute command
+User says "ok" once after reviewing the initial draft. After that, rebuttal rounds run automatically.
+- "ok" → Approve draft and start auto-rebuttal
+- `PAUSE` / `redirect:` / `skip reviewer N` → Intervene at any time during auto-rebuttal
 
 ### Priority Hierarchy
 
@@ -284,6 +285,7 @@ paragraph:
   id: para_001
   question: "Why does this method outperform prior work?"
   answer: "User-provided information..."
+  target_section: "method"  # Section to save to (from user input). null → drafts.md
   draft: |
     Our approach outperforms prior methods because...
   status: review  # draft | review | rebuttal | approved
@@ -337,7 +339,7 @@ history:
 | F003 | Reviewer reporting directly to user | Must go through Author |
 | F004 | Working without reading context | Causes quality issues |
 | F005 | Ignoring user intervention (PAUSE/REDIRECT) | User control is paramount |
-| F006 | Author skipping approval gate | User must approve each rebuttal round |
+| F006 | Author skipping initial draft approval | User must say "ok" before rebuttal starts |
 
 ## Instructions
 
