@@ -175,6 +175,89 @@ def api_update_references():
     return jsonify({'success': True})
 
 
+@app.route('/api/reset', methods=['POST'])
+def api_reset():
+    """Reset all state: queue, paper, habits, glossary. Keep references."""
+    errors = []
+    
+    # Reset queue/draft/current.yaml
+    try:
+        draft_path = QUEUE_DIR / "draft" / "current.yaml"
+        draft_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(draft_path, 'w') as f:
+            f.write("# Current Draft\nparagraph:\n  id: null\n  question: null\n  answer: null\n  target_section: null\n  draft: null\n  status: idle\n  round: 0\n  timestamp: \"\"\n  rebuttal: null\n")
+    except Exception as e:
+        errors.append(f"draft: {e}")
+    
+    # Reset queue/reviews/reviewer*.yaml
+    for i in range(1, 4):
+        try:
+            rp = QUEUE_DIR / "reviews" / f"reviewer{i}.yaml"
+            rp.parent.mkdir(parents=True, exist_ok=True)
+            with open(rp, 'w') as f:
+                f.write(f"# Reviewer {i} Review\nreview:\n  paragraph_id: null\n  reviewer_id: reviewer{i}\n  round: 0\n  decision: null\n  timestamp: \"\"\n  overall_assessment: null\n  consistency_with_paper: null\n  comments: []\n")
+        except Exception as e:
+            errors.append(f"reviewer{i}: {e}")
+    
+    # Reset queue/rebuttal/history.yaml
+    try:
+        hp = QUEUE_DIR / "rebuttal" / "history.yaml"
+        hp.parent.mkdir(parents=True, exist_ok=True)
+        with open(hp, 'w') as f:
+            f.write("# Rebuttal History\nhistory: []\n")
+    except Exception as e:
+        errors.append(f"history: {e}")
+    
+    # Reset queue/control.yaml
+    try:
+        cp = QUEUE_DIR / "control.yaml"
+        with open(cp, 'w') as f:
+            f.write("# User Intervention Control File\ncommand: null\nredirect_instruction: \"\"\nskip_reviewers: []\nuser_comment: \"\"\nlast_updated: null\n")
+    except Exception as e:
+        errors.append(f"control: {e}")
+    
+    # Reset context/author_habits.yaml
+    try:
+        habits_path = CONTEXT_DIR / "author_habits.yaml"
+        with open(habits_path, 'w') as f:
+            f.write("# Author Habits\nbad_habits: []\nuser_preferences: []\n")
+    except Exception as e:
+        errors.append(f"habits: {e}")
+    
+    # Reset context/glossary.yaml
+    try:
+        glossary_path = CONTEXT_DIR / "glossary.yaml"
+        with open(glossary_path, 'w') as f:
+            f.write("# Glossary\nterminology: {}\nnotation: {}\nclaims: {}\n")
+    except Exception as e:
+        errors.append(f"glossary: {e}")
+    
+    # Clear paper/ (all .tex files in sections, drafts.md, but keep main.tex template)
+    paper_dir = BASE_DIR / "paper"
+    sections_dir = paper_dir / "sections"
+    try:
+        if sections_dir.exists():
+            for f in sections_dir.glob("*.tex"):
+                f.unlink()
+    except Exception as e:
+        errors.append(f"sections: {e}")
+    
+    try:
+        drafts_path = paper_dir / "drafts.md"
+        if drafts_path.exists():
+            drafts_path.unlink()
+    except Exception as e:
+        errors.append(f"drafts.md: {e}")
+    
+    # Emit updated state to all clients
+    socketio.emit('state_updated', get_current_state())
+    socketio.emit('context_updated', get_context_files())
+    
+    if errors:
+        return jsonify({'success': False, 'errors': errors}), 500
+    return jsonify({'success': True})
+
+
 @app.route('/api/settings')
 def api_settings():
     """Get current settings."""
@@ -218,11 +301,64 @@ def api_model():
         # Emit update to all clients
         socketio.emit('settings_updated', {'models': settings['models']})
         
+        # Auto-restart agents with new model in background
+        threading.Thread(target=_restart_agents, args=(new_model,), daemon=True).start()
+        
         return jsonify({
             'status': 'success',
             'model': new_model,
-            'message': f'Model changed to {new_model}. Restart agents to apply.'
+            'message': f'Model changed to {new_model}. Agents restarting...'
         })
+
+
+def _restart_agents(model: str) -> str:
+    """Restart all Claude agents in tmux with the given model.
+    
+    Returns empty string on success, error message on failure.
+    """
+    panes = ['paper:0.0', 'paper:0.1', 'paper:0.2', 'paper:0.3']
+    labels = ['author', 'reviewer1', 'reviewer2', 'reviewer3']
+    instructions = [
+        'Read instructions/author.md and understand your role.',
+        'Read instructions/reviewer.md and understand your role. You are reviewer1.',
+        'Read instructions/reviewer.md and understand your role. You are reviewer2.',
+        'Read instructions/reviewer.md and understand your role. You are reviewer3.',
+    ]
+    try:
+        # Send /exit to each pane to quit current Claude session
+        for pane in panes:
+            subprocess.run(['tmux', 'send-keys', '-t', pane, '/exit'], capture_output=True)
+            subprocess.run(['tmux', 'send-keys', '-t', pane, 'Enter'], capture_output=True)
+        
+        time.sleep(2)
+        
+        # Start Claude with new model in each pane
+        for pane in panes:
+            cmd = f'claude --model {model} --dangerously-skip-permissions'
+            subprocess.run(['tmux', 'send-keys', '-t', pane, cmd], capture_output=True)
+            subprocess.run(['tmux', 'send-keys', '-t', pane, 'Enter'], capture_output=True)
+            time.sleep(0.5)
+        
+        # Wait for disclaimer and accept it
+        time.sleep(5)
+        for pane in panes:
+            output = capture_tmux_pane(pane, 30)
+            if 'Yes, I accept' in output:
+                subprocess.run(['tmux', 'send-keys', '-t', pane, 'Down'], capture_output=True)
+                time.sleep(0.3)
+                subprocess.run(['tmux', 'send-keys', '-t', pane, 'Enter'], capture_output=True)
+        
+        # Wait for Claude to be ready, then send instructions
+        time.sleep(10)
+        for i, pane in enumerate(panes):
+            subprocess.run(['tmux', 'send-keys', '-t', pane, instructions[i]], capture_output=True)
+            time.sleep(0.5)
+            subprocess.run(['tmux', 'send-keys', '-t', pane, 'Enter'], capture_output=True)
+            time.sleep(2)
+        
+        return ''
+    except Exception as e:
+        return str(e)
 
 
 # WebSocket events

@@ -748,6 +748,9 @@
             <button class="notify-btn" id="notifyBtn" onclick="toggleNotifications()" title="Enable notifications">
                 🔔 通知OFF
             </button>
+            <button class="notify-btn" onclick="resetSystem()" title="Reset all state (keeps references)" style="color: var(--accent-red);">
+                🗑 Reset
+            </button>
             <div class="status-indicator">
                 <div class="status-dot" id="connectionStatus"></div>
                 <span id="connectionText">Connected</span>
@@ -778,14 +781,13 @@
                     <div class="help-text">
                         💡 <strong>OK</strong> = ドラフト承認 → 自動レビュー開始 |
                         <strong>section:</strong> = 保存先セクション |
-                        <strong>PAUSE</strong> = 中断 |
-                        <strong>Batch</strong> = Q/A を `---` で区切る
+                        <strong>PAUSE</strong> = 中断
                     </div>
                 </div>
                 <div class="quick-buttons">
                     <div style="display: flex; gap: 0.4rem; align-items: center;">
                         <label for="sectionSelect" style="font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">Section:</label>
-                        <select id="sectionSelect" style="flex: 1; background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.4rem; border-radius: 4px; font-size: 0.8rem;">
+                        <select id="sectionSelect" onchange="handleSectionChange(this)" style="flex: 1; background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.4rem; border-radius: 4px; font-size: 0.8rem;">
                             <option value="">drafts (default)</option>
                             <option value="abstract">abstract</option>
                             <option value="introduction">introduction</option>
@@ -795,7 +797,9 @@
                             <option value="results">results</option>
                             <option value="discussion">discussion</option>
                             <option value="conclusion">conclusion</option>
+                            <option value="__new__">+ new section...</option>
                         </select>
+                        <input id="customSectionInput" type="text" placeholder="section name" style="display:none; width: 100px; background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.4rem; border-radius: 4px; font-size: 0.8rem;">
                     </div>
                     <button class="quick-btn primary" onclick="sendMessage()">Send → Author</button>
                     <button class="quick-btn" onclick="fillAndSend('OK')" title="Approve draft → auto-rebuttal starts">✓ OK</button>
@@ -1126,6 +1130,7 @@
         }
         
         function changeModel(model) {
+            showToast(`🔄 Changing model to ${model} and restarting agents...`);
             fetch('/api/settings/model', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1135,7 +1140,7 @@
             .then(data => {
                 if (data.status === 'success') {
                     showToast(`✅ ${data.message}`);
-                    addToTimeline(`Model changed to ${model}`);
+                    addToTimeline(`Model changed to ${model} — agents restarting`);
                 } else {
                     showToast(`❌ ${data.error}`, true);
                 }
@@ -1563,6 +1568,52 @@
             sendMessage();
         }
         
+        function resetSystem() {
+            if (!confirm('全てのやり取り、paper、draft、habits、glossary を削除します。\nReferences は保持されます。\n\nよろしいですか？')) return;
+            showToast('🔄 Resetting...');
+            fetch('/api/reset', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('✅ Reset complete');
+                    addToTimeline('System reset');
+                } else {
+                    showToast(`❌ Reset failed: ${JSON.stringify(data.errors)}`, true);
+                }
+            })
+            .catch(() => showToast('❌ Reset failed', true));
+        }
+        
+        function handleSectionChange(select) {
+            const customInput = document.getElementById('customSectionInput');
+            if (select.value === '__new__') {
+                customInput.style.display = 'block';
+                customInput.focus();
+            } else {
+                customInput.style.display = 'none';
+            }
+        }
+        
+        function getSelectedSection() {
+            const select = document.getElementById('sectionSelect');
+            const customInput = document.getElementById('customSectionInput');
+            if (select.value === '__new__') {
+                const custom = customInput.value.trim().replace(/\s+/g, '_').toLowerCase();
+                if (custom) {
+                    // Add to dropdown for reuse
+                    const opt = document.createElement('option');
+                    opt.value = custom;
+                    opt.textContent = custom;
+                    select.insertBefore(opt, select.querySelector('option[value="__new__"]'));
+                    select.value = custom;
+                    customInput.style.display = 'none';
+                    customInput.value = '';
+                }
+                return custom;
+            }
+            return select.value;
+        }
+        
         function parseBatchInput(text) {
             const blocks = text.split(/\n-{3,}\n/).map(b => b.trim()).filter(Boolean);
             const items = [];
@@ -1600,8 +1651,7 @@
             }
 
             // Append section from dropdown if Q&A detected and no section: already in text
-            const sectionSelect = document.getElementById('sectionSelect');
-            const selectedSection = sectionSelect ? sectionSelect.value : '';
+            const selectedSection = getSelectedSection();
             const isBatch = /(^|\n)\s*Q:\s*/i.test(raw) && /(^|\n)\s*A:\s*/i.test(raw);
 
             if (isBatch && selectedSection && !/\bsection:\s/i.test(raw)) {

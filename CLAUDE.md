@@ -1,7 +1,7 @@
 # Paper Writing System - Multi-Agent Academic Writing Framework
 
-> **Version**: 1.0
-> **Last Updated**: 2026-02-05
+> **Version**: 1.1
+> **Last Updated**: 2026-02-10
 
 ## Overview
 
@@ -130,17 +130,22 @@ Available models (set via command line or Web UI):
 # Command line
 ./start.sh --web -m sonnet
 
-# Web UI: Header dropdown → Settings saved to config/settings.yaml
+# Web UI: Header dropdown → agents auto-restart with new model
 ```
+
+Changing model via Web UI saves to `config/settings.yaml` and automatically restarts all agents.
 
 ## Web Dashboard (Optional)
 
 Start with `./start.sh --web` for a browser-based real-time view.
 
-- **URL**: http://127.0.0.1:5050 (default)
+- **URL**: http://127.0.0.1:5050 (default port)
 - **Real-time**: Uses WebSocket to push updates when YAML files change
 - **Terminal Output**: Shows all 4 agent terminals in browser (no tmux attach needed)
 - **Notifications**: 🔔 button enables sound/browser alerts when waiting for input
+- **Model Switch**: Dropdown in header, auto-restarts agents on change
+- **Reset**: 🗑 button clears all state (queue, paper, habits, glossary) while keeping references
+- **Section Selector**: Dropdown with standard sections + "new section" option for custom names
 - **Environment**: Uses `uv` for Python package management (auto-installed)
 
 **Server Commands:**
@@ -176,10 +181,10 @@ To avoid token explosion from reading full paper every time:
 
 ### Phase 1: Writing
 
-1. User provides "question" and "answer" to Author
+1. User provides "question", "answer", and optional "section:" to Author
 2. Author asks for clarification if needed
 3. Author writes the paragraph
-4. User says "OK" → Proceed to Phase 2
+4. User says "ok" → Proceed to Phase 2
 
 ### Phase 2: Initial Review (Parallel)
 
