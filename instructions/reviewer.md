@@ -147,6 +147,8 @@ Read `queue/draft/current.yaml` and understand:
 - `draft`: Author's written paragraph
 - `round`: Which round this is
 
+If `question` / `answer` include multiple items (batch Q&A), treat the draft as a **multi-paragraph batch** and review the set as a single unit.
+
 ### Step 2: Read Context Files (Efficient Consistency Check)
 
 **Read these files BEFORE reviewing (in this order):**

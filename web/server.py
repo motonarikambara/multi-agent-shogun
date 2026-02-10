@@ -11,11 +11,13 @@ import yaml
 import time
 import subprocess
 import threading
+import platform
 from pathlib import Path
 from datetime import datetime
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, emit
 from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver
 from watchdog.events import FileSystemEventHandler
 
 # Configuration
@@ -153,6 +155,23 @@ def api_context():
     return jsonify(get_context_files())
 
 
+@app.route('/api/context/references', methods=['POST'])
+def api_update_references():
+    """Update references.md from the web UI."""
+    data = request.get_json(silent=True) or {}
+    content = data.get('content', '')
+    references_path = CONTEXT_DIR / "references.md"
+    references_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(references_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+    socketio.emit('context_updated', get_context_files())
+    return jsonify({'success': True})
+
+
 @app.route('/api/settings')
 def api_settings():
     """Get current settings."""
@@ -261,6 +280,22 @@ def get_all_pane_outputs() -> dict:
     return outputs
 
 
+def is_claude_running(pane: str) -> bool:
+    """Check if Claude Code is running in a tmux pane."""
+    try:
+        output = capture_tmux_pane(pane, 30)
+        # Claude Code shows specific patterns when running
+        if any(kw in output for kw in ['claude', 'Claude', '❯', 'thinking', 'Churned']):
+            return True
+        # If pane ends with bare shell prompt (% or $), Claude is NOT running
+        stripped = output.rstrip()
+        if stripped.endswith('%') or stripped.endswith('$'):
+            return False
+        return True  # Assume running if unclear
+    except Exception:
+        return False
+
+
 def send_to_tmux(pane: str, message: str) -> dict:
     """Send a message to a tmux pane.
     
@@ -271,6 +306,13 @@ def send_to_tmux(pane: str, message: str) -> dict:
     Returns:
         dict with success status and any error message
     """
+    # Safety check: don't send to bare shell
+    if not is_claude_running(pane):
+        return {
+            'success': False,
+            'error': 'Claude Code is not running in this pane. Start agents first (./start.sh --web).'
+        }
+
     try:
         # Send the message
         subprocess.run(
@@ -391,7 +433,11 @@ def stop_terminal_updates():
 def start_file_watcher():
     """Start watching queue directory for changes."""
     event_handler = QueueFileHandler(socketio)
-    observer = Observer()
+    # Use polling on macOS to avoid FSEvents stream issues
+    if platform.system() == "Darwin":
+        observer = PollingObserver()
+    else:
+        observer = Observer()
     
     # Watch queue directory
     observer.schedule(event_handler, str(QUEUE_DIR), recursive=True)

@@ -168,6 +168,23 @@ The user provides input in this format:
 - **Question**: The question the paragraph should answer
 - **Answer**: Technical information to address that question
 
+#### Batch Q&A (Multiple at Once)
+
+If the user provides multiple Q&A pairs in one message (often prefixed with `[BATCH_QA]`), treat them as a **single batch** and:
+1. Write **multiple paragraphs** (one per Q&A), in order.
+2. Ask for a **single OK** to start a **single review round** for the entire batch.
+3. Save the batch into `queue/draft/current.yaml` with **numbered Q&A** in `question` and `answer`.
+
+Example (question/answer fields):
+```
+question: |
+  1) Q: ...
+  2) Q: ...
+answer: |
+  1) A: ...
+  2) A: ...
+```
+
 ### User Preference Commands
 
 The user may add preferences to your habits checklist:
@@ -273,8 +290,8 @@ When the user says "OK", proceed to Phase 2 (Request Review).
 ```yaml
 paragraph:
   id: para_001  # Paragraph ID (sequential)
-  question: "Question from user"
-  answer: "Answer from user"
+  question: "Question from user (or numbered list for batch)"
+  answer: "Answer from user (or numbered list for batch)"
   draft: |
     Your written paragraph...
   status: review

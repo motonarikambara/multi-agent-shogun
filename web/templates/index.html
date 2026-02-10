@@ -256,9 +256,10 @@
         .quick-input-container {
             max-width: 1800px;
             margin: 0 auto;
-            display: flex;
+            display: grid;
+            grid-template-columns: 1fr auto;
             gap: 1rem;
-            align-items: center;
+            align-items: start;
         }
         
         .help-text {
@@ -273,7 +274,8 @@
         }
         
         .quick-input-field {
-            flex: 1;
+            width: 100%;
+            min-height: 90px;
             background: var(--bg-tertiary);
             border: 1px solid var(--border-color);
             border-radius: 6px;
@@ -281,6 +283,7 @@
             color: var(--text-primary);
             font-family: inherit;
             font-size: 0.9rem;
+            resize: vertical;
         }
         
         .quick-input-field:focus {
@@ -291,7 +294,9 @@
         
         .quick-buttons {
             display: flex;
-            gap: 0.5rem;
+            flex-direction: column;
+            gap: 0.4rem;
+            min-width: 140px;
         }
         
         .quick-btn {
@@ -669,45 +674,25 @@
             }
         }
         
-        /* Input Form Styles */
-        .input-section {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--border-color);
-            padding: 1rem 2rem;
-            z-index: 100;
-        }
-        
-        .input-form {
+        /* Batch Q&A input */
+        .batch-actions {
             display: flex;
-            gap: 0.75rem;
-            max-width: 1800px;
-            margin: 0 auto;
-            align-items: flex-end;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            justify-content: flex-end;
         }
-        
-        .input-group {
-            flex: 1;
+
+        .references-editor {
             display: flex;
             flex-direction: column;
-            gap: 0.25rem;
+            gap: 0.5rem;
         }
-        
-        .input-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-        }
-        
-        .input-textarea {
+
+        .references-textarea {
             width: 100%;
-            min-height: 60px;
-            max-height: 150px;
+            min-height: 220px;
             padding: 0.75rem;
-            background: var(--bg-tertiary);
+            background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             border-radius: 6px;
             color: var(--text-primary);
@@ -715,77 +700,11 @@
             font-size: 0.9rem;
             resize: vertical;
         }
-        
-        .input-textarea:focus {
+
+        .references-textarea:focus {
             outline: none;
             border-color: var(--accent-blue);
-        }
-        
-        .target-select {
-            padding: 0.75rem;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            color: var(--text-primary);
-            font-family: inherit;
-            font-size: 0.85rem;
-            min-width: 150px;
-        }
-        
-        .target-select:focus {
-            outline: none;
-            border-color: var(--accent-blue);
-        }
-        
-        .send-button {
-            padding: 0.75rem 1.5rem;
-            background: var(--accent-blue);
-            border: none;
-            border-radius: 6px;
-            color: #000;
-            font-family: inherit;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-        
-        .send-button:hover {
-            background: #79b8ff;
-        }
-        
-        .send-button:disabled {
-            background: var(--border-color);
-            cursor: not-allowed;
-        }
-        
-        .quick-commands {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
-        }
-        
-        .quick-cmd {
-            padding: 0.25rem 0.5rem;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            color: var(--text-secondary);
-            font-family: inherit;
-            font-size: 0.75rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .quick-cmd:hover {
-            border-color: var(--accent-blue);
-            color: var(--text-primary);
-        }
-        
-        /* Add padding to body to account for fixed input */
-        body {
-            padding-bottom: 150px;
+            box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
         }
         
         .message-toast {
@@ -854,19 +773,22 @@
         <!-- Quick Input Section at Top -->
         <div class="quick-input-section">
             <div class="quick-input-container">
-                <input type="text" id="quickInput" class="quick-input-field" 
-                       placeholder="Type message to Author... (Enter to send)" />
-                <div class="quick-buttons">
-                    <button class="quick-btn primary" onclick="sendQuickMessage('OK')" title="Approve and proceed to review">✓ OK</button>
-                    <button class="quick-btn" onclick="sendQuickMessage('yes')" title="Confirm/agree">yes</button>
-                    <button class="quick-btn warning" onclick="sendQuickMessage('PAUSE')" title="Pause the workflow">⏸ Pause</button>
-                    <button class="quick-btn" onclick="sendQuickMessage('auto')" title="Let author proceed automatically">🤖 auto</button>
+                <div>
+                    <textarea id="messageInput" class="quick-input-field" placeholder="Author へのメッセージ、または Q&A を入力&#10;&#10;例: Q: Why does...&#10;    A: Because...&#10;    ---&#10;    Q: How does...&#10;    A: By using..."></textarea>
+                    <div class="help-text">
+                        💡 <strong>OK</strong> = approve draft for review |
+                        <strong>habit: X</strong> = add writing preference |
+                        <strong>redirect: X</strong> = redirect author's focus |
+                        <strong>Batch</strong> = Q/A を `---` で区切る
+                    </div>
                 </div>
-            </div>
-            <div class="help-text">
-                💡 <strong>OK</strong> = approve draft for review | 
-                <strong>habit: X</strong> = add writing preference | 
-                <strong>redirect: X</strong> = redirect author's focus
+                <div class="quick-buttons">
+                    <button class="quick-btn primary" onclick="sendMessage()">Send → Author</button>
+                    <button class="quick-btn" onclick="fillAndSend('OK')" title="Approve and proceed to review">✓ OK</button>
+                    <button class="quick-btn" onclick="fillAndSend('yes')" title="Confirm/agree">yes</button>
+                    <button class="quick-btn warning" onclick="fillAndSend('PAUSE')" title="Pause the workflow">⏸ Pause</button>
+                    <button class="quick-btn" onclick="fillAndSend('auto')" title="Let author proceed automatically">🤖 auto</button>
+                </div>
             </div>
         </div>
         
@@ -1035,48 +957,13 @@
                 <div class="panel-header">
                     <span class="panel-title">
                         <span class="icon">📚</span>
-                        References
+                        References (Style Examples)
                     </span>
                 </div>
                 <div class="panel-content" id="referencesContent" style="max-height: 600px;">
                     <div class="empty-state">Loading...</div>
                 </div>
             </div>
-        </div>
-    </div>
-    
-    <!-- Input Section (Fixed at bottom) -->
-    <div class="input-section">
-        <div class="input-form">
-            <div class="input-group">
-                <label class="input-label">Message to Agent</label>
-                <textarea 
-                    class="input-textarea" 
-                    id="messageInput" 
-                    placeholder="Type your message here... (Ctrl+Enter to send)"
-                    rows="2"
-                ></textarea>
-                <div class="quick-commands">
-                    <button class="quick-cmd" data-cmd="OK">OK</button>
-                    <button class="quick-cmd" data-cmd="yes">yes</button>
-                    <button class="quick-cmd" data-cmd="PAUSE">PAUSE</button>
-                    <button class="quick-cmd" data-cmd="auto">auto</button>
-                    <button class="quick-cmd" data-cmd="habit: ">habit:</button>
-                    <button class="quick-cmd" data-cmd="redirect: ">redirect:</button>
-                </div>
-            </div>
-            <div>
-                <label class="input-label">Target</label>
-                <select class="target-select" id="targetSelect">
-                    <option value="author">Author</option>
-                    <option value="reviewer1">Reviewer 1</option>
-                    <option value="reviewer2">Reviewer 2</option>
-                    <option value="reviewer3">Reviewer 3</option>
-                </select>
-            </div>
-            <button class="send-button" id="sendButton">
-                Send →
-            </button>
         </div>
     </div>
     
@@ -1432,9 +1319,28 @@
             }
             
             // Update references
-            if (context.references) {
-                document.getElementById('referencesContent').innerHTML = 
-                    `<pre style="white-space: pre-wrap; font-size: 0.85rem;">${escapeHtml(context.references)}</pre>`;
+            if (context.references !== undefined) {
+                const html = `
+                    <div class="references-editor">
+                        <div class="question-answer">
+                            <div class="qa-label">使い方</div>
+                            <div class="qa-content">
+                                この欄を編集して <strong>Save</strong> を押してください。
+                                Author はこの内容を優先して文体を合わせます。
+                            </div>
+                        </div>
+                        <textarea id="referencesTextarea" class="references-textarea" placeholder="参考文や好みの文章をここに貼り付ける..."></textarea>
+                        <div class="batch-actions">
+                            <button class="quick-btn" onclick="reloadReferences()">Reload</button>
+                            <button class="quick-btn primary" onclick="saveReferences()">Save</button>
+                        </div>
+                    </div>`;
+                const container = document.getElementById('referencesContent');
+                container.innerHTML = html;
+                const textarea = document.getElementById('referencesTextarea');
+                if (textarea) {
+                    textarea.value = context.references || '';
+                }
             }
         }
         
@@ -1598,11 +1504,40 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        function reloadReferences() {
+            fetch('/api/context')
+                .then(r => r.json())
+                .then(ctx => {
+                    if (ctx.references !== undefined) {
+                        const textarea = document.getElementById('referencesTextarea');
+                        if (textarea) textarea.value = ctx.references || '';
+                        showToast('Reloaded');
+                    }
+                })
+                .catch(() => showToast('Reload failed', true));
+        }
+
+        function saveReferences() {
+            const textarea = document.getElementById('referencesTextarea');
+            if (!textarea) return;
+            fetch('/api/context/references', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: textarea.value })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Saved');
+                } else {
+                    showToast(`Save failed: ${data.error || 'unknown error'}`, true);
+                }
+            })
+            .catch(() => showToast('Save failed', true));
+        }
         
         // Message sending functionality
-        const messageInput = document.getElementById('messageInput');
-        const targetSelect = document.getElementById('targetSelect');
-        const sendButton = document.getElementById('sendButton');
         const messageToast = document.getElementById('messageToast');
         
         function showToast(message, isError = false) {
@@ -1613,47 +1548,61 @@
             }, 3000);
         }
         
+        function fillAndSend(text) {
+            const input = document.getElementById('messageInput');
+            if (!input) return;
+            input.value = text;
+            sendMessage();
+        }
+        
+        function parseBatchInput(text) {
+            const blocks = text.split(/\n-{3,}\n/).map(b => b.trim()).filter(Boolean);
+            const items = [];
+            for (const block of blocks) {
+                const qMatch = block.match(/^\s*Q:\s*([\s\S]*?)(?:\nA:|$)/m);
+                const aMatch = block.match(/^\s*A:\s*([\s\S]*)$/m);
+                if (qMatch && aMatch) {
+                    items.push({ question: qMatch[1].trim(), answer: aMatch[1].trim() });
+                }
+            }
+            return items;
+        }
+        
+        function buildBatchMessage(items, rawText) {
+            let message = '[BATCH_QA]\n';
+            message += 'Please write one paragraph per Q&A and review as a single batch.\n\n';
+            if (items.length === 0) {
+                message += rawText;
+                return message;
+            }
+            items.forEach((item, idx) => {
+                const num = idx + 1;
+                message += `${num}) Q: ${item.question}\n   A: ${item.answer}\n`;
+            });
+            return message.trim();
+        }
+
         function sendMessage() {
-            const message = messageInput.value.trim();
-            const target = targetSelect.value;
-            
-            if (!message) {
+            const input = document.getElementById('messageInput');
+            if (!input) return;
+            const raw = input.value.trim();
+            if (!raw) {
                 showToast('Please enter a message', true);
                 return;
             }
-            
-            sendButton.disabled = true;
-            sendButton.textContent = 'Sending...';
-            
-            socket.emit('send_message', { target, message });
-        }
-        
-        // Quick input functionality
-        function sendQuickMessage(msg) {
-            socket.emit('send_message', { target: 'author', message: msg });
-            showToast(`Sent: "${msg}" to Author`);
-            addToTimeline(`User sent: ${msg}`);
-        }
-        
-        // Setup quick input field
-        const quickInput = document.getElementById('quickInput');
-        if (quickInput) {
-            quickInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && quickInput.value.trim()) {
-                    sendQuickMessage(quickInput.value.trim());
-                    quickInput.value = '';
-                }
-            });
+
+            const isBatch = /(^|\n)\s*Q:\s*/i.test(raw) && /(^|\n)\s*A:\s*/i.test(raw);
+            const items = isBatch ? parseBatchInput(raw) : [];
+            const message = isBatch ? buildBatchMessage(items, raw) : raw;
+            socket.emit('send_message', { target: 'author', message });
+            showToast(isBatch ? `Batch sent (${items.length || 'raw'} Q&A)` : 'Message sent');
+            addToTimeline(isBatch ? `Batch Q&A sent (${items.length || 'raw'})` : 'Message sent');
+            input.value = '';
         }
         
         socket.on('message_result', (result) => {
-            sendButton.disabled = false;
-            sendButton.textContent = 'Send →';
-            
             if (result.success) {
-                showToast(`Message sent to ${targetSelect.value}`);
-                messageInput.value = '';
-                addToTimeline(`Sent to ${targetSelect.value}: ${messageInput.value.substring(0, 50)}...`);
+                showToast('Message sent');
             } else {
                 showToast(`Failed: ${result.error}`, true);
             }
@@ -1661,33 +1610,6 @@
         
         socket.on('message_sent', (data) => {
             addToTimeline(`Sent to ${data.target}: "${data.message.substring(0, 40)}${data.message.length > 40 ? '...' : ''}"`);
-        });
-        
-        // Send button click
-        sendButton.addEventListener('click', sendMessage);
-        
-        // Ctrl+Enter to send
-        messageInput.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'Enter') {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-        
-        // Quick commands
-        document.querySelectorAll('.quick-cmd').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const cmd = btn.dataset.cmd;
-                if (cmd.endsWith(': ')) {
-                    // Commands that need additional input
-                    messageInput.value = cmd;
-                    messageInput.focus();
-                } else {
-                    // Direct commands
-                    messageInput.value = cmd;
-                    sendMessage();
-                }
-            });
         });
         
         // Initial load

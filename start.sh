@@ -8,7 +8,7 @@
 #   ./start.sh -s        # Setup only (no Claude startup)
 #   ./start.sh -h        # Show help
 
-set -e
+# set -e removed: many commands intentionally fail (tmux kill, grep, etc.)
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -92,8 +92,31 @@ check_dependencies() {
     fi
 }
 
-check_dependencies
-detect_python
+check_claude_login() {
+    # Try to detect login status without triggering interactive login
+    local output=""
+    if output=$(claude auth status 2>&1); then
+        if echo "$output" | grep -qiE "not logged|not authenticated|login required|please log in"; then
+            echo "Error: Claude Code CLI is not logged in."
+            echo "Run: claude auth login"
+            exit 1
+        fi
+        return 0
+    fi
+
+    # Fallback for older CLI versions
+    output=$(claude whoami 2>&1 || true)
+    if echo "$output" | grep -qiE "not logged|not authenticated|login required|please log in"; then
+        echo "Error: Claude Code CLI is not logged in."
+        echo "Run: claude auth login"
+        exit 1
+    fi
+
+    # If we cannot determine status, fail fast to avoid interactive login screens
+    echo "Error: Unable to verify Claude Code CLI login status."
+    echo "Please log in first: claude auth login"
+    exit 1
+}
 
 # Read shell setting (default: bash on Linux, zsh on macOS)
 if [ "$PLATFORM" = "macos" ]; then
@@ -239,6 +262,10 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Check dependencies after options (so --setup-only can skip login check)
+check_dependencies
+detect_python
+
 # Override shell setting
 if [ -n "$SHELL_OVERRIDE" ]; then
     if [[ "$SHELL_OVERRIDE" == "bash" || "$SHELL_OVERRIDE" == "zsh" ]]; then
@@ -264,35 +291,8 @@ fi
 # Banner display
 # ═══════════════════════════════════════════════════════════════════════════════
 show_banner() {
-    clear
-    echo ""
-    local platform_label=""
-    if [ "$PLATFORM" = "macos" ]; then
-        platform_label="🍎 macOS"
-    elif [ "$PLATFORM" = "linux" ]; then
-        platform_label="🐧 Linux"
-    fi
-    echo -e "\033[1;34m╔══════════════════════════════════════════════════════════════════════════════════╗\033[0m"
-    echo -e "\033[1;34m║\033[0m                                                                                  \033[1;34m║\033[0m"
-    echo -e "\033[1;34m║\033[0m   \033[1;37mPaper Writing System - Multi-Agent Academic Writing Framework\033[0m                 \033[1;34m║\033[0m"
-    echo -e "\033[1;34m║\033[0m                                                            \033[0;36m$platform_label\033[0m        \033[1;34m║\033[0m"
-    echo -e "\033[1;34m║\033[0m   \033[1;33mAuthor\033[0m + \033[1;36mReviewer×3\033[0m = High-Quality Academic Writing                        \033[1;34m║\033[0m"
-    echo -e "\033[1;34m║\033[0m   \033[0;35m🤖 Model: $CLAUDE_MODEL\033[0m                                                            \033[1;34m║\033[0m"
-    echo -e "\033[1;34m╚══════════════════════════════════════════════════════════════════════════════════╝\033[0m"
-    echo ""
-
-    echo -e "\033[1;33m  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m                         \033[1;37m【 Agent Configuration 】\033[0m                         \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m                                                                           \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m    \033[1;33m[Author]\033[0m ─────────────────────────────────────────────────           \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m        │                                                               \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m        ├──→ \033[1;36m[Reviewer 1]\033[0m Contributions & Claims                      \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m        │                                                               \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m        ├──→ \033[1;36m[Reviewer 2]\033[0m Technical Soundness & Methodology            \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m        │                                                               \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m        └──→ \033[1;36m[Reviewer 3]\033[0m Presentation & Language Authenticity         \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m                                                                           \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\033[0m"
+    clear 2>/dev/null || true
+    echo "Paper Writing System (model: $CLAUDE_MODEL)"
     echo ""
 }
 
@@ -486,6 +486,7 @@ if [ "$SETUP_ONLY" = false ]; then
         echo "  Please install Claude Code CLI first."
         exit 1
     fi
+    check_claude_login
 
     log_action "Starting Claude Code for all agents..."
 
@@ -537,18 +538,6 @@ fi
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 6: Completion message
 # ═══════════════════════════════════════════════════════════════════════════════
-log_info "Session layout:"
-echo ""
-echo "     【paper session】4 panes"
-echo "     ┌─────────────────┬─────────────────┐"
-echo "     │     author      │   reviewer2     │"
-echo "     │                 │  (Soundness)    │"
-echo "     ├─────────────────┼─────────────────┤"
-echo "     │   reviewer1     │   reviewer3     │"
-echo "     │   (Claims)      │  (Language)     │"
-echo "     └─────────────────┴─────────────────┘"
-echo ""
-
 # Start web server if requested
 if [ "$WEB_MODE" = true ]; then
     log_info "Starting web dashboard on port $WEB_PORT..."
@@ -603,62 +592,24 @@ if [ "$WEB_MODE" = true ]; then
             exit 1
         fi
     fi
-    echo ""
-    echo "  ╔══════════════════════════════════════════════════════════╗"
-    echo "  ║  Web Dashboard:  http://127.0.0.1:$WEB_PORT                       ║"
-    echo "  ║  (PID: $WEB_PID)                                              ║"
-    echo "  ╚══════════════════════════════════════════════════════════╝"
-    echo ""
+    echo "Web Dashboard: http://127.0.0.1:$WEB_PORT (PID: $WEB_PID)"
 fi
 
 echo ""
-echo "  ╔══════════════════════════════════════════════════════════╗"
-echo "  ║  Paper Writing System Ready!                             ║"
-echo "  ╚══════════════════════════════════════════════════════════╝"
+echo "Paper Writing System Ready!"
 echo ""
 
 if [ "$SETUP_ONLY" = true ]; then
     echo "  Warning: Setup-only mode - Claude Code is NOT started"
-    echo ""
     echo "  To start Claude Code manually:"
-    echo "  ┌──────────────────────────────────────────────────────────┐"
-    echo "  │  for p in \$(seq $PANE_BASE $((PANE_BASE+3))); do                                 │"
-    echo "  │      tmux send-keys -t paper:agents.\$p \\                │"
-    echo "  │      'claude --model $CLAUDE_MODEL --dangerously-skip-permissions' Enter       │"
-    echo "  │  done                                                    │"
-    echo "  └──────────────────────────────────────────────────────────┘"
-    echo ""
+    echo "  for p in \$(seq $PANE_BASE $((PANE_BASE+3))); do"
+    echo "    tmux send-keys -t paper:agents.\$p 'claude --model $CLAUDE_MODEL --dangerously-skip-permissions' Enter"
+    echo "  done"
 fi
 
 if [ "$WEB_MODE" = true ]; then
-    echo "  ┌──────────────────────────────────────────────────────────┐"
-    echo "  │  🌐 WEB MODE - No terminal needed!                       │"
-    echo "  ├──────────────────────────────────────────────────────────┤"
-    echo "  │  Open in browser:  http://127.0.0.1:$WEB_PORT                    │"
-    echo "  │                                                          │"
-    echo "  │  Everything happens in the browser:                      │"
-    echo "  │    ✓ View real-time terminal output                      │"
-    echo "  │    ✓ Send messages to author agent                       │"
-    echo "  │    ✓ Monitor review process                              │"
-    echo "  │    ✓ Edit context files (habits, glossary)               │"
-    echo "  │                                                          │"
-    echo "  │  To stop: kill $WEB_PID (web) and tmux kill-session -t paper   │"
-    echo "  └──────────────────────────────────────────────────────────┘"
-    echo ""
-    echo "  (Optional) Attach to tmux for direct access:"
-    echo "     tmux attach-session -t paper"
-    echo ""
+    echo "Open in browser: http://127.0.0.1:$WEB_PORT"
+    echo "To stop: kill $WEB_PID (web) and tmux kill-session -t paper"
 else
-    echo "  Next steps:"
-    echo "  ┌──────────────────────────────────────────────────────────┐"
-    echo "  │  Attach to the session:                                  │"
-    echo "  │     tmux attach-session -t paper                         │"
-    echo "  │                                                          │"
-    echo "  │  Talk to the author (pane 0):                            │"
-    echo "  │     Provide a 'question' and 'answer' to write a         │"
-    echo "  │     paragraph. Say 'OK' when ready for review.           │"
-    echo "  └──────────────────────────────────────────────────────────┘"
-    echo ""
-    echo "  (Tip: Use --web flag to enable browser dashboard)"
-    echo ""
+    echo "Attach: tmux attach-session -t paper"
 fi
