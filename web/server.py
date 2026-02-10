@@ -258,6 +258,68 @@ def api_reset():
     return jsonify({'success': True})
 
 
+@app.route('/api/docs')
+def api_docs():
+    """Return list of documentation files and their contents."""
+    docs_dir = BASE_DIR / "docs"
+    readme_path = BASE_DIR / "README.md"
+    
+    docs = []
+    
+    # README.md first
+    if readme_path.exists():
+        try:
+            with open(readme_path, 'r', encoding='utf-8') as f:
+                docs.append({
+                    'id': 'readme',
+                    'title': 'Quick Start',
+                    'filename': 'README.md',
+                    'content': f.read()
+                })
+        except Exception:
+            pass
+    
+    # docs/ directory
+    if docs_dir.exists():
+        # Fixed ordering for consistent display
+        doc_order = {
+            'setup-mac.md': ('macOS Setup', 'setup-mac'),
+            'setup-ubuntu.md': ('Ubuntu Setup', 'setup-ubuntu'),
+            'setup-windows.md': ('Windows (WSL2) Setup', 'setup-windows'),
+        }
+        for filename, (title, doc_id) in doc_order.items():
+            filepath = docs_dir / filename
+            if filepath.exists():
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        docs.append({
+                            'id': doc_id,
+                            'title': title,
+                            'filename': f'docs/{filename}',
+                            'content': f.read()
+                        })
+                except Exception:
+                    pass
+        
+        # Any other .md files not in the fixed list
+        for filepath in sorted(docs_dir.glob('*.md')):
+            if filepath.name not in doc_order:
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        doc_id = filepath.stem
+                        title = filepath.stem.replace('-', ' ').replace('_', ' ').title()
+                        docs.append({
+                            'id': doc_id,
+                            'title': title,
+                            'filename': f'docs/{filepath.name}',
+                            'content': f.read()
+                        })
+                except Exception:
+                    pass
+    
+    return jsonify(docs)
+
+
 @app.route('/api/settings')
 def api_settings():
     """Get current settings."""
